@@ -7,7 +7,8 @@ A Python-based scheduler for osteopathy courses that manages lecturers, subjects
 - Manages up to **5 student groups**, **20 lecturers**, **15 subjects**, and **10 rooms**
 - Each lecturer teaches only one subject
 - Each subject can have up to **50 blocks** (half-day sessions)
-- Selects the **5 most important lecturers** based on importance ranking
+- **Schedules all lecturers** with priority for the top 5 most important
+- **Day stability**: Each lecturer is assigned stable/consistent days of the week
 - Uses lecturer **availability calendars** to schedule sessions
 - Distributes subjects across the semester
 - Schedules all required blocks in available half-day slots (morning or afternoon)
@@ -137,13 +138,17 @@ This will:
 
 The scheduler works as follows:
 
-1. **Select Top 5 Lecturers**: Identifies the 5 most important lecturers based on their importance ranking
-2. **Iterate Through Semester**: Goes through each day in the semester
-3. **Check Lecturer Availability**: For each lecturer and time slot, checks if they are available
-4. **Check Student Group Availability**: Ensures the student group is not already scheduled
-5. **Find Available Room**: Assigns any free theory room
-6. **Create Schedule**: Creates a scheduled block if all conditions are met
-7. **Repeat**: Continues until all required blocks are scheduled or no more slots are available
+1. **Assign Day Stability**: Analyzes each lecturer's availability and assigns 1-2 preferred weekdays for consistent scheduling
+2. **Prioritize Lecturers**: Orders lecturers with top 5 most important first, then remaining by importance
+3. **Schedule Each Lecturer**: For each lecturer in priority order:
+   - First tries to schedule on their preferred days (for day stability)
+   - If needed, schedules on other available days
+4. **Check Availability**: For each time slot, verifies:
+   - Lecturer is available
+   - Student group is not already scheduled
+   - Room is available
+5. **Create Schedule**: Creates scheduled blocks when all conditions are met
+6. **Continue**: Repeats until all required blocks are scheduled or no more slots are available
 
 ## Constraints
 

@@ -81,12 +81,12 @@ def add_lecturer_availability(lecturers, start_date, end_date):
     """
     Add availability calendars for lecturers
     
-    For this example, we'll make top lecturers available on most days
-    with some variation in their schedules.
+    For this example, we'll make lecturers available on various days
+    with some variation in their schedules to demonstrate day stability.
     """
     
-    # Get top 5 lecturers (by importance)
-    top_lecturers = sorted(lecturers, key=lambda l: l.importance, reverse=True)[:5]
+    # Sort lecturers by importance
+    sorted_lecturers = sorted(lecturers, key=lambda l: l.importance, reverse=True)
     
     current_date = start_date
     day_counter = 0
@@ -95,35 +95,44 @@ def add_lecturer_availability(lecturers, start_date, end_date):
         # Skip weekends
         if current_date.weekday() < 5:  # Monday = 0, Friday = 4
             
-            for i, lecturer in enumerate(top_lecturers):
+            for i, lecturer in enumerate(sorted_lecturers):
                 # Each lecturer has a slightly different availability pattern
                 # to make scheduling more realistic
                 
-                if i == 0:  # Dr. Smith - available most days
-                    if day_counter % 5 != 0:  # Not available every 5th day
+                if i < 5:  # Top 5 lecturers - more availability
+                    if i == 0:  # Dr. Smith - available most days
+                        if day_counter % 5 != 0:  # Not available every 5th day
+                            lecturer.add_availability(current_date, TimeSlot.MORNING)
+                            lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
+                    
+                    elif i == 1:  # Dr. Johnson - available mornings mostly
                         lecturer.add_availability(current_date, TimeSlot.MORNING)
+                        if day_counter % 3 == 0:
+                            lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
+                    
+                    elif i == 2:  # Dr. Williams - available afternoons mostly
                         lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
+                        if day_counter % 3 == 0:
+                            lecturer.add_availability(current_date, TimeSlot.MORNING)
+                    
+                    elif i == 3:  # Dr. Brown - available 3 days a week
+                        if day_counter % 2 == 0:
+                            lecturer.add_availability(current_date, TimeSlot.MORNING)
+                            lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
+                    
+                    else:  # Dr. Davis - available most afternoons
+                        if day_counter % 4 != 0:
+                            lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
+                        if day_counter % 5 == 0:
+                            lecturer.add_availability(current_date, TimeSlot.MORNING)
                 
-                elif i == 1:  # Dr. Johnson - available mornings mostly
-                    lecturer.add_availability(current_date, TimeSlot.MORNING)
-                    if day_counter % 3 == 0:
-                        lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
-                
-                elif i == 2:  # Dr. Williams - available afternoons mostly
-                    lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
-                    if day_counter % 3 == 0:
-                        lecturer.add_availability(current_date, TimeSlot.MORNING)
-                
-                elif i == 3:  # Dr. Brown - available 3 days a week
-                    if day_counter % 2 == 0:
-                        lecturer.add_availability(current_date, TimeSlot.MORNING)
-                        lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
-                
-                else:  # Dr. Davis - available most afternoons
-                    if day_counter % 4 != 0:
-                        lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
-                    if day_counter % 5 == 0:
-                        lecturer.add_availability(current_date, TimeSlot.MORNING)
+                else:  # Remaining lecturers - less frequent availability
+                    # These lecturers are available less frequently
+                    if day_counter % 3 == i % 3:  # Different patterns for different lecturers
+                        if day_counter % 2 == 0:
+                            lecturer.add_availability(current_date, TimeSlot.MORNING)
+                        else:
+                            lecturer.add_availability(current_date, TimeSlot.AFTERNOON)
             
             day_counter += 1
         
@@ -173,10 +182,43 @@ def main():
     
     # Run the scheduler
     print("\nRunning scheduler...")
+    print("- Assigning stable days of the week to each lecturer")
+    print("- Scheduling top lecturers first with priority")
+    print("- Scheduling remaining lecturers by importance")
     schedule = scheduler.schedule_subjects()
     
     # Print the schedule
     scheduler.print_schedule()
+    
+    # Show day stability statistics
+    print("\n" + "="*80)
+    print("DAY STABILITY ANALYSIS")
+    print("="*80 + "\n")
+    
+    weekday_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    
+    for lecturer in scheduler.lecturers:
+        lecturer_blocks = [b for b in schedule if b.lecturer_id == lecturer.id]
+        if not lecturer_blocks:
+            continue
+        
+        # Count blocks per weekday
+        weekday_counts = {i: 0 for i in range(7)}
+        for block in lecturer_blocks:
+            weekday_counts[block.day.weekday()] += 1
+        
+        # Show preferred days
+        preferred_day_names = [weekday_names[wd] for wd in sorted(lecturer.preferred_days)]
+        
+        # Show actual distribution
+        actual_distribution = [f"{weekday_names[wd]}: {count}" 
+                              for wd, count in weekday_counts.items() if count > 0]
+        
+        subject = subjects[lecturer.subject_id - 1]
+        print(f"{lecturer.name} ({subject.name}):")
+        print(f"  Preferred days: {', '.join(preferred_day_names)}")
+        print(f"  Actual blocks:  {', '.join(actual_distribution)}")
+        print()
     
     print("\nScheduling complete!")
 

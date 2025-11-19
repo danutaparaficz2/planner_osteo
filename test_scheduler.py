@@ -270,6 +270,206 @@ def test_student_group_availability():
     print("✓ Student group availability test passed")
 
 
+def test_lecturer_preferred_days():
+    """Test lecturer preferred day management"""
+    lecturer = Lecturer(1, "Dr. Test", 1, 10)
+    
+    # Initially no preferred days
+    assert len(lecturer.preferred_days) == 0
+    
+    # All days should be acceptable when no preferences set
+    assert lecturer.is_preferred_day(date(2024, 9, 2))  # Monday
+    assert lecturer.is_preferred_day(date(2024, 9, 6))  # Friday
+    
+    # Add Monday as preferred day
+    lecturer.add_preferred_day(0)  # Monday
+    assert 0 in lecturer.preferred_days
+    
+    # Check preferred day detection
+    assert lecturer.is_preferred_day(date(2024, 9, 2))  # Monday
+    assert not lecturer.is_preferred_day(date(2024, 9, 3))  # Tuesday
+    
+    # Add Wednesday
+    lecturer.add_preferred_day(2)  # Wednesday
+    assert lecturer.is_preferred_day(date(2024, 9, 4))  # Wednesday
+    
+    print("✓ Lecturer preferred days test passed")
+
+
+def test_day_stability_assignment():
+    """Test that lecturers are assigned stable days of the week"""
+    lecturers = [
+        Lecturer(1, "Dr. A", 1, 10),
+        Lecturer(2, "Dr. B", 2, 8),
+        Lecturer(3, "Dr. C", 3, 6),
+    ]
+    
+    subjects = [Subject(i, f"Subject {i}", 5) for i in range(1, 4)]
+    rooms = [Room(i, f"Room {i}", 30) for i in range(1, 3)]
+    groups = [StudentGroup(1, "Group A", 25)]
+    
+    start_date = date(2024, 9, 2)  # Monday
+    end_date = date(2024, 9, 27)   # Friday (4 weeks)
+    
+    # Add availability for all weekdays
+    current = start_date
+    while current <= end_date:
+        if current.weekday() < 5:  # Weekdays only
+            for lecturer in lecturers:
+                lecturer.add_availability(current, TimeSlot.MORNING)
+                lecturer.add_availability(current, TimeSlot.AFTERNOON)
+        current += timedelta(days=1)
+    
+    scheduler = Scheduler(lecturers, subjects, rooms, groups, start_date, end_date)
+    
+    # Assign preferred days
+    scheduler.assign_preferred_days_to_lecturers()
+    
+    # All lecturers should have preferred days assigned
+    for lecturer in lecturers:
+        assert len(lecturer.preferred_days) > 0
+        assert len(lecturer.preferred_days) <= 2
+    
+    print("✓ Day stability assignment test passed")
+
+
+def test_schedule_respects_preferred_days():
+    """Test that scheduling respects lecturer preferred days"""
+    lecturers = [
+        Lecturer(1, "Dr. A", 1, 10),
+        Lecturer(2, "Dr. B", 2, 8),
+    ]
+    
+    subjects = [
+        Subject(1, "Subject 1", 6),
+        Subject(2, "Subject 2", 6),
+    ]
+    
+    rooms = [Room(1, "Room A", 30)]
+    groups = [StudentGroup(1, "Group A", 25)]
+    
+    start_date = date(2024, 9, 2)  # Monday
+    end_date = date(2024, 9, 27)   # Friday (4 weeks)
+    
+    # Add availability for all weekdays
+    current = start_date
+    while current <= end_date:
+        if current.weekday() < 5:  # Weekdays only
+            for lecturer in lecturers:
+                lecturer.add_availability(current, TimeSlot.MORNING)
+                lecturer.add_availability(current, TimeSlot.AFTERNOON)
+        current += timedelta(days=1)
+    
+    scheduler = Scheduler(lecturers, subjects, rooms, groups, start_date, end_date)
+    schedule = scheduler.schedule_subjects()
+    
+    # Check that each lecturer's blocks are mostly on their preferred days
+    for lecturer in lecturers:
+        lecturer_blocks = [b for b in schedule if b.lecturer_id == lecturer.id]
+        if len(lecturer_blocks) > 0:
+            # Count blocks on preferred days
+            preferred_day_blocks = sum(
+                1 for b in lecturer_blocks if lecturer.is_preferred_day(b.day)
+            )
+            
+            # At least 70% of blocks should be on preferred days
+            ratio = preferred_day_blocks / len(lecturer_blocks)
+            assert ratio >= 0.7, (
+                f"Lecturer {lecturer.name} has only {ratio:.0%} blocks on preferred days "
+                f"({preferred_day_blocks}/{len(lecturer_blocks)})"
+            )
+    
+    print("✓ Schedule respects preferred days test passed")
+
+
+def test_all_lecturers_scheduled():
+    """Test that all lecturers (not just top 5) get scheduled"""
+    lecturers = [
+        Lecturer(1, "Dr. A", 1, 10),  # Top 5
+        Lecturer(2, "Dr. B", 2, 9),
+        Lecturer(3, "Dr. C", 3, 8),
+        Lecturer(4, "Dr. D", 4, 7),
+        Lecturer(5, "Dr. E", 5, 6),
+        Lecturer(6, "Dr. F", 6, 5),   # Not in top 5
+        Lecturer(7, "Dr. G", 7, 4),
+        Lecturer(8, "Dr. H", 8, 3),
+    ]
+    
+    subjects = [Subject(i, f"Subject {i}", 3) for i in range(1, 9)]
+    rooms = [Room(i, f"Room {i}", 30) for i in range(1, 5)]
+    groups = [StudentGroup(i, f"Group {i}", 25) for i in range(1, 3)]
+    
+    start_date = date(2024, 9, 2)  # Monday
+    end_date = date(2024, 10, 31)  # Long semester
+    
+    # Add availability for all weekdays
+    current = start_date
+    while current <= end_date:
+        if current.weekday() < 5:  # Weekdays only
+            for lecturer in lecturers:
+                lecturer.add_availability(current, TimeSlot.MORNING)
+                lecturer.add_availability(current, TimeSlot.AFTERNOON)
+        current += timedelta(days=1)
+    
+    scheduler = Scheduler(lecturers, subjects, rooms, groups, start_date, end_date)
+    schedule = scheduler.schedule_subjects()
+    
+    # Check that more than 5 lecturers were scheduled
+    scheduled_lecturer_ids = set(b.lecturer_id for b in schedule)
+    assert len(scheduled_lecturer_ids) > 5, (
+        f"Expected more than 5 lecturers scheduled, got {len(scheduled_lecturer_ids)}"
+    )
+    
+    # Check that lower importance lecturers were also scheduled
+    assert 6 in scheduled_lecturer_ids or 7 in scheduled_lecturer_ids, (
+        "Lower importance lecturers were not scheduled"
+    )
+    
+    print("✓ All lecturers scheduled test passed")
+
+
+def test_top_lecturers_priority():
+    """Test that top lecturers are scheduled before lower importance lecturers"""
+    lecturers = [
+        Lecturer(1, "Dr. A", 1, 10),  # Top
+        Lecturer(2, "Dr. B", 2, 5),   # Lower
+    ]
+    
+    subjects = [
+        Subject(1, "Subject 1", 20),  # Many blocks needed
+        Subject(2, "Subject 2", 20),
+    ]
+    
+    rooms = [Room(1, "Room A", 30)]
+    groups = [StudentGroup(1, "Group A", 25)]
+    
+    start_date = date(2024, 9, 2)
+    end_date = date(2024, 9, 20)  # Limited time
+    
+    # Add limited availability
+    current = start_date
+    while current <= end_date:
+        if current.weekday() < 5:
+            for lecturer in lecturers:
+                lecturer.add_availability(current, TimeSlot.MORNING)
+        current += timedelta(days=1)
+    
+    scheduler = Scheduler(lecturers, subjects, rooms, groups, start_date, end_date)
+    schedule = scheduler.schedule_subjects()
+    
+    # Count blocks for each lecturer
+    lecturer_a_blocks = len([b for b in schedule if b.lecturer_id == 1])
+    lecturer_b_blocks = len([b for b in schedule if b.lecturer_id == 2])
+    
+    # Top lecturer should get more or equal blocks scheduled
+    assert lecturer_a_blocks >= lecturer_b_blocks, (
+        f"Top lecturer should have priority: "
+        f"Dr. A={lecturer_a_blocks}, Dr. B={lecturer_b_blocks}"
+    )
+    
+    print("✓ Top lecturers priority test passed")
+
+
 def run_all_tests():
     """Run all tests"""
     print("\n" + "="*60)
@@ -287,6 +487,11 @@ def run_all_tests():
     test_simple_scheduling()
     test_room_availability()
     test_student_group_availability()
+    test_lecturer_preferred_days()
+    test_day_stability_assignment()
+    test_schedule_respects_preferred_days()
+    test_all_lecturers_scheduled()
+    test_top_lecturers_priority()
     
     print("\n" + "="*60)
     print("ALL TESTS PASSED ✓")
