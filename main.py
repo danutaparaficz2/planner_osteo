@@ -12,7 +12,7 @@ This scheduler creates a semester schedule that:
 """
 import sys
 import random
-from sample_data import create_sample_data, print_data_summary
+from data_loader import load_from_json, print_data_summary
 from scheduler import OsteopathyScheduler
 
 
@@ -26,9 +26,9 @@ def main():
     # Set random seed for reproducibility
     random.seed(42)
     
-    # Generate sample data
-    print("Generating sample data...")
-    lecturers, subjects, rooms, student_groups = create_sample_data()
+    # Load data from JSON file
+    print("Loading data from input_data.json...")
+    lecturers, subjects, rooms, student_groups, semester_weeks = load_from_json('input_data.json')
     print_data_summary(lecturers, subjects, rooms, student_groups)
     print()
     
@@ -39,7 +39,7 @@ def main():
         subjects=subjects,
         rooms=rooms,
         student_groups=student_groups,
-        semester_weeks=15
+        semester_weeks=semester_weeks
     )
     print()
     
