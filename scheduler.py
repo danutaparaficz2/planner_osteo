@@ -1,393 +1,356 @@
 """
-Osteopathy Scheduler
-
-This module implements a scheduler for osteopathy courses that:
-- Manages up to 5 student groups, 20 lecturers, 15 subjects, and 10 rooms
-- Each lecturer teaches only one subject
-- Each subject has up to 50 blocks (half-day sessions: morning or afternoon)
-- Selects 5 most important lecturers
-- Uses lecturer availability calendars
-- Distributes subjects across the semester
-- Assigns theory rooms
+Core scheduling algorithm for osteopathy education planner.
 """
-
-from dataclasses import dataclass, field
-from typing import List, Dict, Set, Optional, Tuple
-from enum import Enum
-from datetime import date, datetime, timedelta
-
-
-class TimeSlot(Enum):
-    """Half-day time slots"""
-    MORNING = "morning"
-    AFTERNOON = "afternoon"
+from typing import List, Dict, Optional, Set, Tuple
+from models import (
+    Lecturer, Subject, Room, StudentGroup, Schedule, 
+    ScheduledBlock, TimeSlot, RoomType
+)
+import random
 
 
-@dataclass
-class Lecturer:
-    """Represents a lecturer"""
-    id: int
-    name: str
-    subject_id: int  # Each lecturer teaches only one subject
-    importance: int  # Higher number = more important
-    availability: Dict[date, Set[TimeSlot]] = field(default_factory=dict)
-    
-    def is_available(self, day: date, time_slot: TimeSlot) -> bool:
-        """Check if lecturer is available on a specific day and time slot"""
-        if day not in self.availability:
-            return False
-        return time_slot in self.availability[day]
-    
-    def add_availability(self, day: date, time_slot: TimeSlot):
-        """Add availability for a specific day and time slot"""
-        if day not in self.availability:
-            self.availability[day] = set()
-        self.availability[day].add(time_slot)
-
-
-@dataclass
-class Subject:
-    """Represents a subject/course"""
-    id: int
-    name: str
-    required_blocks: int  # Number of half-day blocks needed (up to 50)
-    
-    def __post_init__(self):
-        if self.required_blocks > 50:
-            raise ValueError(f"Subject {self.name} has {self.required_blocks} blocks, maximum is 50")
-
-
-@dataclass
-class Room:
-    """Represents a theory room"""
-    id: int
-    name: str
-    capacity: int  # All rooms have sufficient capacity
-    
-
-@dataclass
-class StudentGroup:
-    """Represents a student group"""
-    id: int
-    name: str
-    size: int
-
-
-@dataclass
-class ScheduledBlock:
-    """Represents a scheduled block"""
-    subject_id: int
-    lecturer_id: int
-    room_id: int
-    student_group_id: int
-    day: date
-    time_slot: TimeSlot
-    block_number: int  # Which block of the subject this is (1 to required_blocks)
-
-
-class Scheduler:
+class OsteopathyScheduler:
     """
-    Main scheduler class that schedules subjects for the 5 most important lecturers
+    Scheduler for osteopathy education that prioritizes top lecturers
+    and distributes subjects across a semester.
     """
     
-    def __init__(
-        self,
-        lecturers: List[Lecturer],
-        subjects: List[Subject],
-        rooms: List[Room],
-        student_groups: List[StudentGroup],
-        semester_start: date,
-        semester_end: date
-    ):
-        """
-        Initialize the scheduler
-        
-        Args:
-            lecturers: List of up to 20 lecturers
-            subjects: List of up to 15 subjects
-            rooms: List of up to 10 theory rooms
-            student_groups: List of up to 5 student groups
-            semester_start: Start date of the semester
-            semester_end: End date of the semester
-        """
-        if len(lecturers) > 20:
-            raise ValueError(f"Maximum 20 lecturers allowed, got {len(lecturers)}")
-        if len(subjects) > 15:
-            raise ValueError(f"Maximum 15 subjects allowed, got {len(subjects)}")
-        if len(rooms) > 10:
-            raise ValueError(f"Maximum 10 rooms allowed, got {len(rooms)}")
-        if len(student_groups) > 5:
-            raise ValueError(f"Maximum 5 student groups allowed, got {len(student_groups)}")
-        
-        self.lecturers = lecturers
+    def __init__(self, 
+                 lecturers: List[Lecturer],
+                 subjects: List[Subject],
+                 rooms: List[Room],
+                 student_groups: List[StudentGroup],
+                 semester_weeks: int = 15):
+        self.lecturers = {l.id: l for l in lecturers}
         self.subjects = {s.id: s for s in subjects}
-        self.rooms = rooms
-        self.student_groups = student_groups
-        self.semester_start = semester_start
-        self.semester_end = semester_end
-        self.schedule: List[ScheduledBlock] = []
+        self.rooms = {r.id: r for r in rooms}
+        self.student_groups = {g.id: g for g in student_groups}
+        self.semester_weeks = semester_weeks
+        self.schedule = Schedule(weeks=semester_weeks)
         
-        # Create lecturer lookup by subject
-        self.lecturers_by_subject: Dict[int, Lecturer] = {}
-        for lecturer in lecturers:
-            if lecturer.subject_id in self.lecturers_by_subject:
-                raise ValueError(
-                    f"Multiple lecturers assigned to subject {lecturer.subject_id}. "
-                    f"Each subject should have only one lecturer."
-                )
-            self.lecturers_by_subject[lecturer.subject_id] = lecturer
-    
-    def get_top_lecturers(self, count: int = 5) -> List[Lecturer]:
-        """
-        Get the top N most important lecturers
+        # Organize lecturers by priority
+        self.priority_lecturers = [l for l in lecturers if l.priority <= 5]
+        self.priority_lecturers.sort(key=lambda x: x.priority)
         
-        Args:
-            count: Number of top lecturers to select (default 5)
-            
-        Returns:
-            List of top lecturers sorted by importance (descending)
-        """
-        sorted_lecturers = sorted(self.lecturers, key=lambda l: l.importance, reverse=True)
-        return sorted_lecturers[:min(count, len(sorted_lecturers))]
-    
-    def get_available_days(self) -> List[date]:
-        """
-        Get all days in the semester
+        # Organize rooms by type
+        self.theory_rooms = [r for r in rooms if r.room_type == RoomType.THEORY]
+        self.practical_rooms = [r for r in rooms if r.room_type == RoomType.PRACTICAL]
         
-        Returns:
-            List of dates from semester start to end
+    def create_schedule(self) -> Schedule:
         """
-        days = []
-        current_day = self.semester_start
-        while current_day <= self.semester_end:
-            days.append(current_day)
-            current_day += timedelta(days=1)
-        return days
-    
-    def is_room_available(self, room_id: int, day: date, time_slot: TimeSlot) -> bool:
+        Create the complete schedule following the priority rules:
+        1. Schedule top 5 priority lecturers first using their availability
+        2. Handle spread subjects with even distribution
+        3. Schedule practical subjects (A, B, C, D) mixed across semester
         """
-        Check if a room is available at a specific time
+        print(f"Creating schedule for {self.semester_weeks} weeks...")
+        print(f"Priority lecturers: {len(self.priority_lecturers)}")
         
-        Args:
-            room_id: Room ID to check
-            day: Date to check
-            time_slot: Time slot to check
-            
-        Returns:
-            True if room is available, False otherwise
-        """
-        for block in self.schedule:
-            if (block.room_id == room_id and 
-                block.day == day and 
-                block.time_slot == time_slot):
-                return False
-        return True
-    
-    def is_student_group_available(
-        self, 
-        student_group_id: int, 
-        day: date, 
-        time_slot: TimeSlot
-    ) -> bool:
-        """
-        Check if a student group is available at a specific time
-        
-        Args:
-            student_group_id: Student group ID to check
-            day: Date to check
-            time_slot: Time slot to check
-            
-        Returns:
-            True if student group is available, False otherwise
-        """
-        for block in self.schedule:
-            if (block.student_group_id == student_group_id and 
-                block.day == day and 
-                block.time_slot == time_slot):
-                return False
-        return True
-    
-    def find_available_room(self, day: date, time_slot: TimeSlot) -> Optional[int]:
-        """
-        Find an available theory room for a specific time
-        
-        Args:
-            day: Date to check
-            time_slot: Time slot to check
-            
-        Returns:
-            Room ID if available, None otherwise
-        """
-        for room in self.rooms:
-            if self.is_room_available(room.id, day, time_slot):
-                return room.id
-        return None
-    
-    def schedule_subjects(self) -> List[ScheduledBlock]:
-        """
-        Schedule subjects for the 5 most important lecturers
-        
-        Returns:
-            List of scheduled blocks
-        """
-        self.schedule = []
-        
-        # Get top 5 lecturers
-        top_lecturers = self.get_top_lecturers(5)
-        
-        if not top_lecturers:
-            return self.schedule
-        
-        # Get all available days in semester
-        semester_days = self.get_available_days()
-        
-        # Schedule each lecturer's subject
-        for lecturer in top_lecturers:
+        # Step 1: Schedule priority lecturers' theory subjects
+        theory_subjects_priority = []
+        for lecturer in self.priority_lecturers:
             subject = self.subjects.get(lecturer.subject_id)
-            if not subject:
-                continue
-            
-            blocks_scheduled = 0
-            
-            # Try to schedule all required blocks for this subject
-            for day in semester_days:
-                if blocks_scheduled >= subject.required_blocks:
-                    break
-                
-                # Try both time slots for this day
-                for time_slot in [TimeSlot.MORNING, TimeSlot.AFTERNOON]:
-                    if blocks_scheduled >= subject.required_blocks:
-                        break
-                    
-                    # Check if lecturer is available
-                    if not lecturer.is_available(day, time_slot):
-                        continue
-                    
-                    # Try to schedule for each student group
-                    for student_group in self.student_groups:
-                        if blocks_scheduled >= subject.required_blocks:
-                            break
-                        
-                        # Check if student group is available
-                        if not self.is_student_group_available(
-                            student_group.id, day, time_slot
-                        ):
-                            continue
-                        
-                        # Find available room
-                        room_id = self.find_available_room(day, time_slot)
-                        if room_id is None:
-                            continue
-                        
-                        # Create scheduled block
-                        scheduled_block = ScheduledBlock(
-                            subject_id=subject.id,
-                            lecturer_id=lecturer.id,
-                            room_id=room_id,
-                            student_group_id=student_group.id,
-                            day=day,
-                            time_slot=time_slot,
-                            block_number=blocks_scheduled + 1
-                        )
-                        
-                        self.schedule.append(scheduled_block)
-                        blocks_scheduled += 1
-            
-            # Log if not all blocks were scheduled
-            if blocks_scheduled < subject.required_blocks:
-                print(
-                    f"Warning: Only scheduled {blocks_scheduled} of {subject.required_blocks} "
-                    f"blocks for subject {subject.name} (lecturer: {lecturer.name})"
-                )
+            if subject and subject.room_type == RoomType.THEORY:
+                theory_subjects_priority.append((lecturer, subject))
         
+        for lecturer, subject in theory_subjects_priority:
+            print(f"Scheduling priority lecturer: {lecturer.name} - Subject: {subject.name}")
+            self._schedule_subject_for_lecturer(lecturer, subject)
+        
+        # Step 2: Schedule practical subjects (A, B, C, D) mixed across semester
+        practical_subjects = [s for s in self.subjects.values() 
+                            if s.room_type == RoomType.PRACTICAL and s.id in ['A', 'B', 'C', 'D']]
+        
+        if practical_subjects:
+            print(f"Scheduling {len(practical_subjects)} practical subjects mixed across semester...")
+            self._schedule_practical_subjects_mixed(practical_subjects)
+        
+        # Step 3: Schedule remaining subjects
+        remaining_subjects = [s for s in self.subjects.values() 
+                            if s.id not in [b.subject_id for b in self.schedule.blocks]]
+        
+        for subject in remaining_subjects:
+            lecturer = self._get_lecturer_for_subject(subject.id)
+            if lecturer:
+                print(f"Scheduling remaining subject: {subject.name}")
+                self._schedule_subject_for_lecturer(lecturer, subject)
+        
+        print(f"Schedule complete: {len(self.schedule.blocks)} blocks scheduled")
         return self.schedule
     
-    def get_schedule_summary(self) -> Dict:
-        """
-        Get a summary of the schedule
+    def _schedule_subject_for_lecturer(self, lecturer: Lecturer, subject: Subject) -> None:
+        """Schedule all blocks for a subject considering lecturer availability"""
+        # Determine which student groups need this subject
+        groups_needing_subject = [g for g in self.student_groups.values() 
+                                 if subject.id in g.subject_ids]
         
-        Returns:
-            Dictionary with schedule statistics
-        """
-        summary = {
-            "total_blocks_scheduled": len(self.schedule),
-            "subjects_scheduled": len(set(block.subject_id for block in self.schedule)),
-            "lecturers_used": len(set(block.lecturer_id for block in self.schedule)),
-            "rooms_used": len(set(block.room_id for block in self.schedule)),
-            "student_groups_involved": len(set(block.student_group_id for block in self.schedule)),
-            "blocks_by_subject": {}
-        }
-        
-        # Count blocks per subject
-        for block in self.schedule:
-            subject_id = block.subject_id
-            if subject_id not in summary["blocks_by_subject"]:
-                subject = self.subjects[subject_id]
-                summary["blocks_by_subject"][subject_id] = {
-                    "subject_name": subject.name,
-                    "blocks_scheduled": 0,
-                    "blocks_required": subject.required_blocks
-                }
-            summary["blocks_by_subject"][subject_id]["blocks_scheduled"] += 1
-        
-        return summary
+        for group in groups_needing_subject:
+            if subject.spread:
+                self._schedule_spread_blocks(lecturer, subject, group)
+            else:
+                self._schedule_compact_blocks(lecturer, subject, group)
     
-    def print_schedule(self):
-        """Print the schedule in a readable format"""
-        if not self.schedule:
-            print("No blocks scheduled.")
-            return
+    def _schedule_spread_blocks(self, lecturer: Lecturer, subject: Subject, 
+                               group: StudentGroup) -> None:
+        """Schedule blocks spread evenly across the semester"""
+        blocks_needed = subject.blocks_required
         
-        print("\n" + "="*80)
-        print("SCHEDULE SUMMARY")
-        print("="*80)
+        # Calculate ideal spacing
+        total_slots = self.semester_weeks * 5 * 2  # weeks * days * timeslots
+        ideal_gap = total_slots // (blocks_needed + 1) if blocks_needed > 0 else total_slots
         
-        summary = self.get_schedule_summary()
-        print(f"\nTotal blocks scheduled: {summary['total_blocks_scheduled']}")
-        print(f"Subjects scheduled: {summary['subjects_scheduled']}")
-        print(f"Lecturers used: {summary['lecturers_used']}")
-        print(f"Rooms used: {summary['rooms_used']}")
-        print(f"Student groups involved: {summary['student_groups_involved']}")
+        scheduled = 0
+        attempts = 0
+        current_position = ideal_gap
         
-        print("\n" + "-"*80)
-        print("BLOCKS BY SUBJECT")
-        print("-"*80)
+        while scheduled < blocks_needed and attempts < 500:
+            # Convert position to week, day, timeslot
+            week = (current_position // 10) % self.semester_weeks
+            day = ((current_position // 2) % 5) + 1
+            timeslot = TimeSlot.MORNING if current_position % 2 == 0 else TimeSlot.AFTERNOON
+            
+            if week < self.semester_weeks and week >= 0:
+                if self._try_schedule_block(lecturer, subject, group, week, day, timeslot):
+                    scheduled += 1
+                    current_position += ideal_gap
+                else:
+                    current_position += 1
+            else:
+                current_position += 1
+            
+            attempts += 1
         
-        for subject_id, info in summary["blocks_by_subject"].items():
-            print(
-                f"{info['subject_name']}: "
-                f"{info['blocks_scheduled']}/{info['blocks_required']} blocks scheduled"
-            )
+        # If we couldn't schedule all blocks with spreading, fill in remaining
+        if scheduled < blocks_needed:
+            self._schedule_remaining_blocks(lecturer, subject, group, blocks_needed - scheduled)
+    
+    def _schedule_compact_blocks(self, lecturer: Lecturer, subject: Subject, 
+                                 group: StudentGroup) -> None:
+        """Schedule blocks as compactly as possible"""
+        self._schedule_remaining_blocks(lecturer, subject, group, subject.blocks_required)
+    
+    def _schedule_remaining_blocks(self, lecturer: Lecturer, subject: Subject, 
+                                   group: StudentGroup, blocks_needed: int) -> None:
+        """Schedule remaining blocks in any available slot"""
+        scheduled = 0
         
-        print("\n" + "-"*80)
-        print("DETAILED SCHEDULE")
-        print("-"*80)
+        for week in range(self.semester_weeks):
+            for day in range(1, 6):  # Monday-Friday
+                for timeslot in [TimeSlot.MORNING, TimeSlot.AFTERNOON]:
+                    if scheduled >= blocks_needed:
+                        return
+                    
+                    if self._try_schedule_block(lecturer, subject, group, week, day, timeslot):
+                        scheduled += 1
+    
+    def _try_schedule_block(self, lecturer: Lecturer, subject: Subject, 
+                           group: StudentGroup, week: int, day: int, 
+                           timeslot: TimeSlot) -> bool:
+        """Try to schedule a single block at the specified time"""
+        # Check lecturer availability for priority lecturers
+        if lecturer.priority <= 5:
+            if not lecturer.is_available(week, day, timeslot):
+                return False
         
-        # Sort schedule by date and time slot
-        sorted_schedule = sorted(
-            self.schedule, 
-            key=lambda b: (b.day, b.time_slot.value, b.subject_id)
+        # Find available room
+        room = self._find_available_room(subject.room_type, week, day, timeslot, 
+                                        lecturer.id, group.id)
+        if not room:
+            return False
+        
+        # Check if slot is available for lecturer, room, and group
+        if not self.schedule.is_slot_available(week, day, timeslot, 
+                                              lecturer.id, room.id, group.id):
+            return False
+        
+        # Create and add block
+        block = ScheduledBlock(
+            subject_id=subject.id,
+            lecturer_id=lecturer.id,
+            student_group_id=group.id,
+            room_id=room.id,
+            week=week,
+            day=day,
+            timeslot=timeslot,
+            room_number=room.room_number
         )
         
-        current_day = None
-        for block in sorted_schedule:
-            # Print date header if it's a new day
-            if block.day != current_day:
-                current_day = block.day
-                print(f"\n{block.day.strftime('%Y-%m-%d (%A)')}")
-            
-            subject = self.subjects[block.subject_id]
-            lecturer = next(l for l in self.lecturers if l.id == block.lecturer_id)
-            room = next(r for r in self.rooms if r.id == block.room_id)
-            student_group = next(sg for sg in self.student_groups if sg.id == block.student_group_id)
-            
-            print(
-                f"  {block.time_slot.value.upper():10} | "
-                f"Subject: {subject.name:20} | "
-                f"Lecturer: {lecturer.name:15} | "
-                f"Group: {student_group.name:10} | "
-                f"Room: {room.name:10} | "
-                f"Block {block.block_number}/{subject.required_blocks}"
-            )
+        return self.schedule.add_block(block)
+    
+    def _schedule_practical_subjects_mixed(self, subjects: List[Subject]) -> None:
+        """Schedule practical subjects (A, B, C, D) mixed across semester"""
+        # Get the single practical room
+        if not self.practical_rooms:
+            print("Warning: No practical room available")
+            return
         
-        print("\n" + "="*80 + "\n")
+        practical_room = self.practical_rooms[0]
+        
+        # Create a list of all slots that need to be filled for all practical subjects
+        subject_blocks = []
+        for subject in subjects:
+            lecturer = self._get_lecturer_for_subject(subject.id)
+            if not lecturer:
+                continue
+            
+            groups_needing_subject = [g for g in self.student_groups.values() 
+                                     if subject.id in g.subject_ids]
+            
+            for group in groups_needing_subject:
+                for _ in range(subject.blocks_required):
+                    subject_blocks.append((subject, lecturer, group))
+        
+        # Shuffle to mix subjects
+        random.shuffle(subject_blocks)
+        
+        # Schedule blocks in mixed order
+        scheduled = 0
+        for week in range(self.semester_weeks):
+            for day in range(1, 6):  # Monday-Friday
+                for timeslot in [TimeSlot.MORNING, TimeSlot.AFTERNOON]:
+                    if scheduled >= len(subject_blocks):
+                        return
+                    
+                    subject, lecturer, group = subject_blocks[scheduled]
+                    
+                    # Check if lecturer is available (for priority lecturers)
+                    if lecturer.priority <= 5:
+                        if not lecturer.is_available(week, day, timeslot):
+                            continue
+                    
+                    # Check if slot is available
+                    if self.schedule.is_slot_available(week, day, timeslot,
+                                                      lecturer.id, practical_room.id, group.id):
+                        block = ScheduledBlock(
+                            subject_id=subject.id,
+                            lecturer_id=lecturer.id,
+                            student_group_id=group.id,
+                            room_id=practical_room.id,
+                            week=week,
+                            day=day,
+                            timeslot=timeslot,
+                            room_number=practical_room.room_number
+                        )
+                        
+                        if self.schedule.add_block(block):
+                            scheduled += 1
+    
+    def _find_available_room(self, room_type: RoomType, week: int, day: int, 
+                            timeslot: TimeSlot, lecturer_id: str, 
+                            group_id: str) -> Optional[Room]:
+        """Find an available room of the specified type"""
+        rooms = self.theory_rooms if room_type == RoomType.THEORY else self.practical_rooms
+        
+        for room in rooms:
+            if self.schedule.is_slot_available(week, day, timeslot, 
+                                              lecturer_id, room.id, group_id):
+                return room
+        
+        return None
+    
+    def _get_lecturer_for_subject(self, subject_id: str) -> Optional[Lecturer]:
+        """Get the lecturer who teaches a subject"""
+        for lecturer in self.lecturers.values():
+            if lecturer.subject_id == subject_id:
+                return lecturer
+        return None
+    
+    def print_schedule(self, output_file: Optional[str] = None) -> None:
+        """Print the schedule in a readable format"""
+        output = []
+        output.append("=" * 80)
+        output.append("OSTEOPATHY EDUCATION SCHEDULE")
+        output.append("=" * 80)
+        
+        # Group by week
+        for week in range(self.semester_weeks):
+            week_blocks = [b for b in self.schedule.blocks if b.week == week]
+            if not week_blocks:
+                continue
+            
+            output.append(f"\nWEEK {week + 1}")
+            output.append("-" * 80)
+            
+            # Group by day
+            for day in range(1, 6):
+                day_blocks = [b for b in week_blocks if b.day == day]
+                if not day_blocks:
+                    continue
+                
+                day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+                output.append(f"\n  {day_names[day - 1]}:")
+                
+                # Group by timeslot
+                for timeslot in [TimeSlot.MORNING, TimeSlot.AFTERNOON]:
+                    slot_blocks = [b for b in day_blocks if b.timeslot == timeslot]
+                    if slot_blocks:
+                        output.append(f"    {timeslot.value.upper()}:")
+                        for block in slot_blocks:
+                            subject = self.subjects[block.subject_id]
+                            lecturer = self.lecturers[block.lecturer_id]
+                            group = self.student_groups[block.student_group_id]
+                            room = self.rooms[block.room_id]
+                            
+                            room_display = f"Room #{room.room_number}" if room.room_number else room.name
+                            output.append(f"      - Subject: {subject.name} ({subject.id})")
+                            output.append(f"        Lecturer: {lecturer.name}")
+                            output.append(f"        Group: {group.name}")
+                            output.append(f"        Room: {room_display} ({room.room_type.value})")
+                            output.append("")
+        
+        output.append("=" * 80)
+        output.append(f"TOTAL BLOCKS SCHEDULED: {len(self.schedule.blocks)}")
+        output.append("=" * 80)
+        
+        result = "\n".join(output)
+        
+        if output_file:
+            with open(output_file, 'w') as f:
+                f.write(result)
+            print(f"Schedule written to {output_file}")
+        else:
+            print(result)
+    
+    def print_statistics(self) -> None:
+        """Print scheduling statistics"""
+        print("\n" + "=" * 80)
+        print("SCHEDULING STATISTICS")
+        print("=" * 80)
+        
+        # Blocks per subject
+        print("\nBlocks scheduled per subject:")
+        for subject_id, subject in self.subjects.items():
+            blocks = self.schedule.get_blocks_for_subject(subject_id)
+            print(f"  {subject.name} ({subject_id}): {len(blocks)}/{subject.blocks_required} blocks")
+            
+            if subject.spread and len(blocks) > 1:
+                # Calculate actual spacing
+                weeks = sorted([b.week for b in blocks])
+                gaps = [weeks[i+1] - weeks[i] for i in range(len(weeks)-1)]
+                avg_gap = sum(gaps) / len(gaps) if gaps else 0
+                print(f"    Average gap: {avg_gap:.1f} weeks (spread subject)")
+        
+        # Blocks per lecturer
+        print("\nBlocks per lecturer:")
+        lecturer_blocks = {}
+        for block in self.schedule.blocks:
+            lecturer_blocks[block.lecturer_id] = lecturer_blocks.get(block.lecturer_id, 0) + 1
+        
+        for lecturer_id, count in sorted(lecturer_blocks.items(), 
+                                         key=lambda x: self.lecturers[x[0]].priority):
+            lecturer = self.lecturers[lecturer_id]
+            print(f"  {lecturer.name} (Priority {lecturer.priority}): {count} blocks")
+        
+        # Room utilization
+        print("\nRoom utilization:")
+        room_blocks = {}
+        for block in self.schedule.blocks:
+            room_blocks[block.room_id] = room_blocks.get(block.room_id, 0) + 1
+        
+        for room_id, count in sorted(room_blocks.items(), key=lambda x: -x[1]):
+            room = self.rooms[room_id]
+            total_slots = self.semester_weeks * 5 * 2  # weeks * days * timeslots
+            utilization = (count / total_slots) * 100
+            print(f"  {room.name} ({room.room_type.value}): {count} blocks ({utilization:.1f}% utilization)")
+        
+        print("=" * 80)

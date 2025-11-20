@@ -1,169 +1,200 @@
-# Osteopathy Planner
+# Osteopathy Education Scheduler
 
-A Python-based scheduler for osteopathy courses that manages lecturers, subjects, rooms, and student groups.
+A Python-based scheduler for osteopathy education that manages lecturers, subjects, rooms, and student groups across a semester.
 
 ## Features
 
-- Manages up to **5 student groups**, **20 lecturers**, **15 subjects**, and **10 rooms**
-- Each lecturer teaches only one subject
-- Each subject can have up to **50 blocks** (half-day sessions)
-- Selects the **5 most important lecturers** based on importance ranking
-- Uses lecturer **availability calendars** to schedule sessions
-- Distributes subjects across the semester
-- Schedules all required blocks in available half-day slots (morning or afternoon)
-- Automatically assigns available theory rooms
+- **Priority-based Scheduling**: Prioritizes the top 5 lecturers and respects their availability calendars
+- **Pattern-Based Availability**: NEW! Reduces 150+ manual entries to ~10 pattern definitions (see [PATTERN_AVAILABILITY_GUIDE.md](PATTERN_AVAILABILITY_GUIDE.md))
+- **Interactive CLI Wizard**: User-friendly input builder with pattern toggle interface
+- **Flexible Room Assignment**: Auto-generates 10 theory rooms + 1 practical room (no manual room input needed)
+- **Spread Subjects**: Distributes certain subjects evenly across the semester for better learning retention
+- **Practical Subject Mixing**: Mixes practical subjects across the semester to ensure variety
+- **Conflict Resolution**: Automatically prevents scheduling conflicts for lecturers, rooms, and student groups
+- **Comprehensive Visualizations**: Input data plots, room/group/lecturer calendars, weekly overviews, utilization heatmaps
+- **Detailed Statistics**: Provides comprehensive scheduling statistics and utilization reports
+- **Standalone Apps**: PyInstaller macOS binaries for non-technical users
+
+## Problem Specification
+
+The scheduler handles:
+- Up to 5 student groups with subject assignments
+- 20 lecturers (each teaches one subject)
+- 15 subjects with varying block requirements
+- 10 rooms (9 theory rooms + 1 practical room)
+- Each block is a half-day (morning or afternoon)
+- Semester spans 15 weeks
 
 ## Installation
 
-This is a standalone Python module. No external dependencies are required (uses only Python standard library).
+No external dependencies required. Uses Python 3 standard library only.
 
 ```bash
+# Clone the repository
 git clone https://github.com/danutaparaficz2/planner_osteo.git
 cd planner_osteo
+
+# Run the scheduler
+python3 main.py
 ```
 
-## Usage
+## Quick Start
 
-### Basic Example
-
-```python
-from datetime import date, timedelta
-from scheduler import Lecturer, Subject, Room, StudentGroup, Scheduler, TimeSlot
-
-# Create lecturers
-lecturers = [
-    Lecturer(1, "Dr. Smith", subject_id=1, importance=10),
-    Lecturer(2, "Dr. Johnson", subject_id=2, importance=9),
-    # ... more lecturers
-]
-
-# Create subjects
-subjects = [
-    Subject(1, "Anatomy Fundamentals", required_blocks=10),
-    Subject(2, "Osteopathic Principles", required_blocks=12),
-    # ... more subjects
-]
-
-# Create rooms
-rooms = [
-    Room(1, "Room A", capacity=30),
-    Room(2, "Room B", capacity=30),
-    # ... more rooms
-]
-
-# Create student groups
-student_groups = [
-    StudentGroup(1, "Group A", size=25),
-    StudentGroup(2, "Group B", size=28),
-    # ... more groups
-]
-
-# Set lecturer availability
-for lecturer in lecturers:
-    # Add availability for specific dates and time slots
-    lecturer.add_availability(date(2024, 9, 1), TimeSlot.MORNING)
-    lecturer.add_availability(date(2024, 9, 1), TimeSlot.AFTERNOON)
-    # ... add more availability
-
-# Create scheduler
-scheduler = Scheduler(
-    lecturers=lecturers,
-    subjects=subjects,
-    rooms=rooms,
-    student_groups=student_groups,
-    semester_start=date(2024, 9, 1),
-    semester_end=date(2024, 11, 30)
-)
-
-# Run scheduler for top 5 lecturers
-schedule = scheduler.schedule_subjects()
-
-# Print the schedule
-scheduler.print_schedule()
-```
-
-### Running the Example
-
-A complete working example is provided in `example_usage.py`:
-
+### All-in-One App (Recommended)
 ```bash
-python example_usage.py
+python3 app_cli.py
+# or double-click: start_all_in_one.command
 ```
 
-This will:
-1. Create sample data (lecturers, subjects, rooms, student groups)
-2. Set up availability calendars for the top 5 lecturers
-3. Run the scheduler
-4. Display a detailed schedule with all scheduled blocks
+Menu options:
+1. **Edit input (wizard)** - Interactive pattern builder for lecturer availability
+2. **Validate input** - Check data integrity
+3. **Run scheduler** - Generate optimized schedule
+4. **Visualize input data** - See subjects, lecturers, constraints
+5. **Visualize schedule** - Room/group/lecturer calendars + weekly overviews
 
-## Data Models
+### Command Line Usage
 
-### Lecturer
-- `id`: Unique identifier
-- `name`: Lecturer name
-- `subject_id`: The subject they teach (one subject per lecturer)
-- `importance`: Importance ranking (higher = more important)
-- `availability`: Dictionary mapping dates to available time slots
+**Edit input data:**
+```bash
+python3 user_input_cli.py
+# or: ./start_wizard.command
+```
 
-### Subject
-- `id`: Unique identifier
-- `name`: Subject name
-- `required_blocks`: Number of half-day blocks needed (max 50)
+**Run scheduler only:**
+```bash
+python3 main.py
+```
 
-### Room
-- `id`: Unique identifier
-- `name`: Room name
-- `capacity`: Room capacity (all rooms have sufficient capacity)
+**Visualize:**
+```bash
+python3 visualize_input_data.py  # Input plots
+python3 visualize_schedule.py     # Schedule calendars
+```
 
-### StudentGroup
-- `id`: Unique identifier
-- `name`: Group name
-- `size`: Number of students
+### Output
 
-### TimeSlot
-- `MORNING`: Morning session
-- `AFTERNOON`: Afternoon session
+The scheduler produces:
+- **Console output**: Summary statistics and scheduling progress
+- **schedule_output.txt**: Detailed week-by-week schedule with all assignments
 
-### ScheduledBlock
-- `subject_id`: Subject being taught
-- `lecturer_id`: Lecturer teaching
-- `room_id`: Room assigned
-- `student_group_id`: Student group attending
-- `day`: Date of the session
-- `time_slot`: Morning or afternoon
-- `block_number`: Block number within the subject (1 to required_blocks)
+### Example Output
 
-## Algorithm
+```
+SCHEDULING STATISTICS
+Blocks scheduled per subject:
+  Anatomy (S1): 40/20 blocks
+    Average gap: 0.4 weeks (spread subject)
+  Physiology (S2): 30/15 blocks
+    Average gap: 0.5 weeks (spread subject)
+  ...
 
-The scheduler works as follows:
+Blocks per lecturer:
+  Dr. Smith (Priority 1): 40 blocks
+  Dr. Johnson (Priority 2): 30 blocks
+  ...
 
-1. **Select Top 5 Lecturers**: Identifies the 5 most important lecturers based on their importance ranking
-2. **Iterate Through Semester**: Goes through each day in the semester
-3. **Check Lecturer Availability**: For each lecturer and time slot, checks if they are available
-4. **Check Student Group Availability**: Ensures the student group is not already scheduled
-5. **Find Available Room**: Assigns any free theory room
-6. **Create Schedule**: Creates a scheduled block if all conditions are met
-7. **Repeat**: Continues until all required blocks are scheduled or no more slots are available
+Room utilization:
+  Theory Room 1 (theory): 130 blocks (86.7% utilization)
+  Practical Room (practical): 66 blocks (44.0% utilization)
+  ...
+```
 
-## Constraints
+## Architecture
 
-- Maximum 5 student groups
-- Maximum 20 lecturers
-- Maximum 15 subjects
-- Maximum 10 rooms
-- Maximum 50 blocks per subject
-- Each lecturer teaches exactly one subject
-- Half-day blocks (morning or afternoon only)
-- No double-booking of rooms, lecturers, or student groups
+### Core Components
 
-## Output
+- **models.py**: Data models for all entities (Lecturer, Subject, Room, StudentGroup, Schedule, etc.)
+- **scheduler.py**: Main scheduling algorithm with priority-based allocation
+- **sample_data.py**: Sample data generator for testing
+- **main.py**: Entry point and execution script
 
-The scheduler provides:
+### Scheduling Algorithm
 
-- **Schedule Summary**: Total blocks scheduled, subjects, lecturers, rooms, and student groups involved
-- **Blocks by Subject**: How many blocks were scheduled for each subject vs. required
-- **Detailed Schedule**: Day-by-day breakdown with date, time slot, subject, lecturer, group, room, and block number
+1. **Priority Phase**: Schedule top 5 priority lecturers first, respecting their availability calendars
+2. **Spread Distribution**: For subjects marked as "spread", distribute blocks evenly across the semester
+3. **Practical Mixing**: Mix practical subjects (A, B, C, D) across the semester using the single practical room
+4. **Remaining Subjects**: Schedule any remaining subjects in available slots
+5. **Conflict Prevention**: Ensure no lecturer, room, or student group double-booking
+
+## Customization
+
+### Modifying Sample Data
+
+Edit `sample_data.py` to customize:
+- Number and priority of lecturers
+- Subject definitions and block requirements
+- Room configurations
+- Student group assignments
+- Lecturer availability patterns
+
+### Adjusting Scheduler Behavior
+
+Edit `scheduler.py` to modify:
+- Spreading algorithm (adjust gap calculations)
+- Practical subject mixing strategy
+- Priority weighting
+- Room assignment logic
+
+## Key New Features
+
+### Pattern-Based Availability (🆕)
+Dramatically simplifies lecturer availability input:
+- **Old way**: 150+ manual entries per lecturer
+- **New way**: ~10 pattern definitions
+
+See [PATTERN_AVAILABILITY_GUIDE.md](PATTERN_AVAILABILITY_GUIDE.md) for complete guide.
+
+**Example:**
+```json
+"availability": {
+  "patterns": [{"weeks": "1-15", "days": {"Mon": ["morning", "afternoon"], "Wed": ["morning"]}}],
+  "exceptions": [{"week": 7, "day": "Mon", "remove": ["afternoon"]}],
+  "blackouts": [{"from_week": 13, "to_week": 13, "days": []}]
+}
+```
+
+Interactive CLI with toggle interface:
+```
+  slot> all
+    Day       Morning Afternoon
+    Mon         ✓         ✓
+    Tue         ✓         ✓
+```
+
+## Project Structure
+
+```
+planner_osteo/
+├── README.md                       # This file
+├── PATTERN_AVAILABILITY_GUIDE.md   # NEW: Complete pattern guide
+├── IMPLEMENTATION_SUMMARY.md       # Technical documentation
+├── main.py                         # Scheduler entry point
+├── app_cli.py                      # All-in-one menu app
+├── user_input_cli.py              # Interactive wizard with pattern builder
+├── models.py                       # Data models
+├── scheduler.py                    # Scheduling algorithm
+├── data_loader.py                  # JSON loader with pattern expansion
+├── validate_input.py               # Input validation
+├── visualize_input_data.py         # Input visualizations
+├── visualize_schedule.py           # Schedule visualizations
+├── test_pattern_availability.py    # Pattern tests
+├── demo_pattern_availability.py    # Demo and conversion tool
+├── input_data.json                 # Input data
+├── schedule_output.txt            # Generated schedule
+├── images/                         # Visualization outputs
+│   ├── input/                     # Input data plots
+│   └── schedule/                  # Schedule calendars
+└── dist/                          # Standalone macOS apps
+    ├── PlannerAllInOne
+    └── PlannerInputWizard
+```
+
+## Requirements
+
+- Python 3.6 or higher
+- No external dependencies
 
 ## License
 
-MIT
+This project is part of the osteopathy education planning system.

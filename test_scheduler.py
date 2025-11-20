@@ -1,297 +1,259 @@
+#!/usr/bin/env python3
 """
-Tests for the Osteopathy Scheduler
-
-This module contains basic tests to verify the scheduler functionality.
+Tests for the osteopathy education scheduler.
+Validates that the scheduler meets all requirements.
 """
-
-from datetime import date, timedelta
-from scheduler import (
-    Lecturer, Subject, Room, StudentGroup, Scheduler, TimeSlot
-)
-
-
-def test_lecturer_creation():
-    """Test creating a lecturer"""
-    lecturer = Lecturer(1, "Dr. Test", 1, 10)
-    assert lecturer.id == 1
-    assert lecturer.name == "Dr. Test"
-    assert lecturer.subject_id == 1
-    assert lecturer.importance == 10
-    print("✓ Lecturer creation test passed")
+import random
+from sample_data import create_sample_data
+from scheduler import OsteopathyScheduler
+from models import RoomType
 
 
-def test_subject_creation():
-    """Test creating a subject"""
-    subject = Subject(1, "Test Subject", 10)
-    assert subject.id == 1
-    assert subject.name == "Test Subject"
-    assert subject.required_blocks == 10
-    print("✓ Subject creation test passed")
-
-
-def test_subject_max_blocks():
-    """Test subject max blocks constraint"""
-    try:
-        Subject(1, "Too Many Blocks", 51)
-        assert False, "Should have raised ValueError"
-    except ValueError as e:
-        assert "maximum is 50" in str(e)
-    print("✓ Subject max blocks constraint test passed")
-
-
-def test_room_creation():
-    """Test creating a room"""
-    room = Room(1, "Room A", 30)
-    assert room.id == 1
-    assert room.name == "Room A"
-    assert room.capacity == 30
-    print("✓ Room creation test passed")
-
-
-def test_student_group_creation():
-    """Test creating a student group"""
-    group = StudentGroup(1, "Group A", 25)
-    assert group.id == 1
-    assert group.name == "Group A"
-    assert group.size == 25
-    print("✓ Student group creation test passed")
-
-
-def test_lecturer_availability():
-    """Test lecturer availability management"""
-    lecturer = Lecturer(1, "Dr. Test", 1, 10)
-    test_date = date(2024, 9, 1)
+def test_scheduler_basic():
+    """Test basic scheduler functionality"""
+    print("Test: Basic scheduler functionality")
     
-    # Initially not available
-    assert not lecturer.is_available(test_date, TimeSlot.MORNING)
+    # Set seed for reproducibility
+    random.seed(42)
     
-    # Add availability
-    lecturer.add_availability(test_date, TimeSlot.MORNING)
-    assert lecturer.is_available(test_date, TimeSlot.MORNING)
-    assert not lecturer.is_available(test_date, TimeSlot.AFTERNOON)
+    # Create data
+    lecturers, subjects, rooms, student_groups = create_sample_data()
     
-    # Add afternoon availability
-    lecturer.add_availability(test_date, TimeSlot.AFTERNOON)
-    assert lecturer.is_available(test_date, TimeSlot.AFTERNOON)
-    print("✓ Lecturer availability test passed")
-
-
-def test_scheduler_constraints():
-    """Test scheduler constraint validation"""
-    subjects = [Subject(i, f"Subject {i}", 10) for i in range(1, 16)]
-    rooms = [Room(i, f"Room {i}", 30) for i in range(1, 11)]
-    groups = [StudentGroup(i, f"Group {i}", 25) for i in range(1, 6)]
-    
-    # Test max lecturers constraint
-    try:
-        lecturers = [Lecturer(i, f"Dr. {i}", i % 15 + 1, 10) for i in range(1, 22)]
-        Scheduler(lecturers, subjects, rooms, groups, date(2024, 9, 1), date(2024, 11, 30))
-        assert False, "Should have raised ValueError for too many lecturers"
-    except ValueError as e:
-        assert "Maximum 20 lecturers" in str(e)
-    
-    # Test max subjects constraint
-    try:
-        lecturers = [Lecturer(i, f"Dr. {i}", i, 10) for i in range(1, 11)]
-        too_many_subjects = [Subject(i, f"Subject {i}", 10) for i in range(1, 17)]
-        Scheduler(lecturers, too_many_subjects, rooms, groups, date(2024, 9, 1), date(2024, 11, 30))
-        assert False, "Should have raised ValueError for too many subjects"
-    except ValueError as e:
-        assert "Maximum 15 subjects" in str(e)
-    
-    # Test max rooms constraint
-    try:
-        lecturers = [Lecturer(i, f"Dr. {i}", i, 10) for i in range(1, 11)]
-        too_many_rooms = [Room(i, f"Room {i}", 30) for i in range(1, 12)]
-        Scheduler(lecturers, subjects, too_many_rooms, groups, date(2024, 9, 1), date(2024, 11, 30))
-        assert False, "Should have raised ValueError for too many rooms"
-    except ValueError as e:
-        assert "Maximum 10 rooms" in str(e)
-    
-    # Test max groups constraint
-    try:
-        lecturers = [Lecturer(i, f"Dr. {i}", i, 10) for i in range(1, 11)]
-        too_many_groups = [StudentGroup(i, f"Group {i}", 25) for i in range(1, 7)]
-        Scheduler(lecturers, subjects, rooms, too_many_groups, date(2024, 9, 1), date(2024, 11, 30))
-        assert False, "Should have raised ValueError for too many groups"
-    except ValueError as e:
-        assert "Maximum 5 student groups" in str(e)
-    
-    print("✓ Scheduler constraints test passed")
-
-
-def test_top_lecturers_selection():
-    """Test selection of top 5 lecturers"""
-    lecturers = [
-        Lecturer(1, "Dr. A", 1, 10),
-        Lecturer(2, "Dr. B", 2, 5),
-        Lecturer(3, "Dr. C", 3, 8),
-        Lecturer(4, "Dr. D", 4, 3),
-        Lecturer(5, "Dr. E", 5, 9),
-        Lecturer(6, "Dr. F", 6, 1),
-        Lecturer(7, "Dr. G", 7, 7),
-    ]
-    
-    subjects = [Subject(i, f"Subject {i}", 10) for i in range(1, 8)]
-    rooms = [Room(i, f"Room {i}", 30) for i in range(1, 6)]
-    groups = [StudentGroup(i, f"Group {i}", 25) for i in range(1, 3)]
-    
-    scheduler = Scheduler(
-        lecturers, subjects, rooms, groups,
-        date(2024, 9, 1), date(2024, 11, 30)
+    # Create scheduler
+    scheduler = OsteopathyScheduler(
+        lecturers=lecturers,
+        subjects=subjects,
+        rooms=rooms,
+        student_groups=student_groups,
+        semester_weeks=15
     )
     
-    top_5 = scheduler.get_top_lecturers(5)
+    # Create schedule
+    schedule = scheduler.create_schedule()
     
-    assert len(top_5) == 5
-    assert top_5[0].name == "Dr. A"  # importance 10
-    assert top_5[1].name == "Dr. E"  # importance 9
-    assert top_5[2].name == "Dr. C"  # importance 8
-    assert top_5[3].name == "Dr. G"  # importance 7
-    assert top_5[4].name == "Dr. B"  # importance 5
+    # Verify blocks were scheduled
+    assert len(schedule.blocks) > 0, "No blocks were scheduled"
+    print(f"  ✓ Scheduled {len(schedule.blocks)} blocks")
     
-    print("✓ Top lecturers selection test passed")
+    return True
 
 
-def test_simple_scheduling():
-    """Test basic scheduling functionality"""
-    # Create minimal setup
-    lecturers = [
-        Lecturer(1, "Dr. A", 1, 10),
-        Lecturer(2, "Dr. B", 2, 5),
-    ]
+def test_priority_lecturers():
+    """Test that top 5 priority lecturers are scheduled"""
+    print("Test: Priority lecturers are scheduled")
     
-    subjects = [
-        Subject(1, "Subject 1", 2),
-        Subject(2, "Subject 2", 3),
-    ]
+    random.seed(42)
+    lecturers, subjects, rooms, student_groups = create_sample_data()
     
-    rooms = [Room(1, "Room A", 30)]
-    groups = [StudentGroup(1, "Group A", 25)]
+    scheduler = OsteopathyScheduler(
+        lecturers=lecturers,
+        subjects=subjects,
+        rooms=rooms,
+        student_groups=student_groups,
+        semester_weeks=15
+    )
     
-    start_date = date(2024, 9, 2)  # Monday
-    end_date = date(2024, 9, 6)    # Friday
+    schedule = scheduler.create_schedule()
     
-    # Add availability for lecturers
-    for day_offset in range(5):
-        day = start_date + timedelta(days=day_offset)
-        lecturers[0].add_availability(day, TimeSlot.MORNING)
-        lecturers[0].add_availability(day, TimeSlot.AFTERNOON)
-        lecturers[1].add_availability(day, TimeSlot.MORNING)
+    # Check that priority lecturers (1-5) have blocks scheduled
+    priority_lecturer_ids = [l.id for l in lecturers if l.priority <= 5]
+    scheduled_lecturer_ids = set(block.lecturer_id for block in schedule.blocks)
     
-    scheduler = Scheduler(lecturers, subjects, rooms, groups, start_date, end_date)
-    schedule = scheduler.schedule_subjects()
+    priority_scheduled = [lid for lid in priority_lecturer_ids if lid in scheduled_lecturer_ids]
     
-    # Should schedule some blocks
-    assert len(schedule) > 0
+    assert len(priority_scheduled) == 5, f"Expected 5 priority lecturers, got {len(priority_scheduled)}"
+    print(f"  ✓ All 5 priority lecturers scheduled")
     
-    # Should schedule subject 1 (top lecturer)
-    subject_1_blocks = [b for b in schedule if b.subject_id == 1]
-    assert len(subject_1_blocks) == 2  # All required blocks
-    
-    print("✓ Simple scheduling test passed")
+    return True
 
 
-def test_room_availability():
-    """Test that rooms are not double-booked"""
-    lecturers = [
-        Lecturer(1, "Dr. A", 1, 10),
-        Lecturer(2, "Dr. B", 2, 9),
-    ]
+def test_practical_subjects():
+    """Test that practical subjects A, B, C, D are scheduled"""
+    print("Test: Practical subjects A, B, C, D are scheduled")
     
-    subjects = [
-        Subject(1, "Subject 1", 2),
-        Subject(2, "Subject 2", 2),
-    ]
+    random.seed(42)
+    lecturers, subjects, rooms, student_groups = create_sample_data()
     
-    rooms = [Room(1, "Room A", 30)]
-    groups = [
-        StudentGroup(1, "Group A", 25),
-        StudentGroup(2, "Group B", 25),
-    ]
+    scheduler = OsteopathyScheduler(
+        lecturers=lecturers,
+        subjects=subjects,
+        rooms=rooms,
+        student_groups=student_groups,
+        semester_weeks=15
+    )
     
-    start_date = date(2024, 9, 2)
-    end_date = date(2024, 9, 3)
+    schedule = scheduler.create_schedule()
     
-    # Both lecturers available same time
-    for lecturer in lecturers:
-        lecturer.add_availability(start_date, TimeSlot.MORNING)
-        lecturer.add_availability(start_date, TimeSlot.AFTERNOON)
+    # Check practical subjects are scheduled
+    practical_subjects = ['A', 'B', 'C', 'D']
+    scheduled_subjects = set(block.subject_id for block in schedule.blocks)
     
-    scheduler = Scheduler(lecturers, subjects, rooms, groups, start_date, end_date)
-    schedule = scheduler.schedule_subjects()
+    for subj_id in practical_subjects:
+        assert subj_id in scheduled_subjects, f"Practical subject {subj_id} not scheduled"
     
-    # Check no room double-booking
-    time_slots_used = set()
-    for block in schedule:
-        key = (block.day, block.time_slot, block.room_id)
-        assert key not in time_slots_used, "Room double-booked!"
-        time_slots_used.add(key)
+    print(f"  ✓ All practical subjects A, B, C, D scheduled")
     
-    print("✓ Room availability test passed")
+    # Verify practical subjects use practical room
+    practical_blocks = [b for b in schedule.blocks if b.subject_id in practical_subjects]
+    practical_room_ids = [r.id for r in rooms if r.room_type == RoomType.PRACTICAL]
+    
+    for block in practical_blocks:
+        assert block.room_id in practical_room_ids, f"Practical block using non-practical room"
+    
+    print(f"  ✓ Practical subjects use practical room")
+    
+    return True
 
 
-def test_student_group_availability():
-    """Test that student groups are not double-booked"""
-    lecturers = [
-        Lecturer(1, "Dr. A", 1, 10),
-        Lecturer(2, "Dr. B", 2, 9),
-    ]
+def test_spread_subjects():
+    """Test that spread subjects are distributed across semester"""
+    print("Test: Spread subjects are distributed")
     
-    subjects = [
-        Subject(1, "Subject 1", 2),
-        Subject(2, "Subject 2", 2),
-    ]
+    random.seed(42)
+    lecturers, subjects, rooms, student_groups = create_sample_data()
     
-    rooms = [
-        Room(1, "Room A", 30),
-        Room(2, "Room B", 30),
-    ]
-    groups = [StudentGroup(1, "Group A", 25)]
+    scheduler = OsteopathyScheduler(
+        lecturers=lecturers,
+        subjects=subjects,
+        rooms=rooms,
+        student_groups=student_groups,
+        semester_weeks=15
+    )
     
-    start_date = date(2024, 9, 2)
-    end_date = date(2024, 9, 3)
+    schedule = scheduler.create_schedule()
     
-    # Both lecturers available same time
-    for lecturer in lecturers:
-        lecturer.add_availability(start_date, TimeSlot.MORNING)
-        lecturer.add_availability(start_date, TimeSlot.AFTERNOON)
+    # Find spread subjects
+    spread_subject_ids = [s.id for s in subjects if s.spread]
     
-    scheduler = Scheduler(lecturers, subjects, rooms, groups, start_date, end_date)
-    schedule = scheduler.schedule_subjects()
+    for subj_id in spread_subject_ids:
+        blocks = [b for b in schedule.blocks if b.subject_id == subj_id]
+        
+        if len(blocks) > 1:
+            # Check that blocks are not all in the same week
+            weeks = [b.week for b in blocks]
+            unique_weeks = set(weeks)
+            
+            # For spread subjects, we expect blocks in multiple weeks
+            assert len(unique_weeks) > 1, f"Spread subject {subj_id} not spread across weeks"
     
-    # Check no student group double-booking
-    time_slots_used = set()
-    for block in schedule:
-        key = (block.day, block.time_slot, block.student_group_id)
-        assert key not in time_slots_used, "Student group double-booked!"
-        time_slots_used.add(key)
+    print(f"  ✓ Spread subjects distributed across multiple weeks")
     
-    print("✓ Student group availability test passed")
+    return True
+
+
+def test_no_conflicts():
+    """Test that there are no scheduling conflicts"""
+    print("Test: No scheduling conflicts")
+    
+    random.seed(42)
+    lecturers, subjects, rooms, student_groups = create_sample_data()
+    
+    scheduler = OsteopathyScheduler(
+        lecturers=lecturers,
+        subjects=subjects,
+        rooms=rooms,
+        student_groups=student_groups,
+        semester_weeks=15
+    )
+    
+    schedule = scheduler.create_schedule()
+    
+    # Check for conflicts
+    for i, block1 in enumerate(schedule.blocks):
+        for block2 in schedule.blocks[i+1:]:
+            # If same time slot, check for conflicts
+            if (block1.week == block2.week and 
+                block1.day == block2.day and 
+                block1.timeslot == block2.timeslot):
+                
+                # No lecturer, room, or group should be double-booked
+                assert block1.lecturer_id != block2.lecturer_id, \
+                    f"Lecturer conflict: {block1.lecturer_id}"
+                assert block1.room_id != block2.room_id, \
+                    f"Room conflict: {block1.room_id}"
+                assert block1.student_group_id != block2.student_group_id, \
+                    f"Student group conflict: {block1.student_group_id}"
+    
+    print(f"  ✓ No scheduling conflicts detected")
+    
+    return True
+
+
+def test_theory_rooms():
+    """Test that theory subjects use theory rooms"""
+    print("Test: Theory subjects use theory rooms")
+    
+    random.seed(42)
+    lecturers, subjects, rooms, student_groups = create_sample_data()
+    
+    scheduler = OsteopathyScheduler(
+        lecturers=lecturers,
+        subjects=subjects,
+        rooms=rooms,
+        student_groups=student_groups,
+        semester_weeks=15
+    )
+    
+    schedule = scheduler.create_schedule()
+    
+    # Find theory subjects
+    theory_subject_ids = [s.id for s in subjects if s.room_type == RoomType.THEORY]
+    theory_room_ids = [r.id for r in rooms if r.room_type == RoomType.THEORY]
+    
+    # Check that theory subjects use theory rooms
+    theory_blocks = [b for b in schedule.blocks if b.subject_id in theory_subject_ids]
+    
+    for block in theory_blocks:
+        assert block.room_id in theory_room_ids, \
+            f"Theory block using non-theory room: {block.room_id}"
+    
+    print(f"  ✓ Theory subjects use theory rooms")
+    
+    return True
 
 
 def run_all_tests():
     """Run all tests"""
-    print("\n" + "="*60)
-    print("RUNNING TESTS")
-    print("="*60 + "\n")
+    print("=" * 80)
+    print("RUNNING SCHEDULER TESTS")
+    print("=" * 80)
+    print()
     
-    test_lecturer_creation()
-    test_subject_creation()
-    test_subject_max_blocks()
-    test_room_creation()
-    test_student_group_creation()
-    test_lecturer_availability()
-    test_scheduler_constraints()
-    test_top_lecturers_selection()
-    test_simple_scheduling()
-    test_room_availability()
-    test_student_group_availability()
+    tests = [
+        test_scheduler_basic,
+        test_priority_lecturers,
+        test_practical_subjects,
+        test_spread_subjects,
+        test_no_conflicts,
+        test_theory_rooms,
+    ]
     
-    print("\n" + "="*60)
-    print("ALL TESTS PASSED ✓")
-    print("="*60 + "\n")
+    passed = 0
+    failed = 0
+    
+    for test in tests:
+        try:
+            if test():
+                passed += 1
+            else:
+                failed += 1
+                print(f"  ✗ Test failed")
+        except AssertionError as e:
+            failed += 1
+            print(f"  ✗ Test failed: {e}")
+        except Exception as e:
+            failed += 1
+            print(f"  ✗ Test error: {e}")
+        print()
+    
+    print("=" * 80)
+    print(f"RESULTS: {passed} passed, {failed} failed")
+    print("=" * 80)
+    
+    return failed == 0
 
 
 if __name__ == "__main__":
-    run_all_tests()
+    import sys
+    success = run_all_tests()
+    sys.exit(0 if success else 1)
