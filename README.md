@@ -5,11 +5,15 @@ A Python-based scheduler for osteopathy education that manages lecturers, subjec
 ## Features
 
 - **Priority-based Scheduling**: Prioritizes the top 5 lecturers and respects their availability calendars
-- **Flexible Room Assignment**: Automatically assigns theory rooms (9 available) and manages a single practical room
+- **Pattern-Based Availability**: NEW! Reduces 150+ manual entries to ~10 pattern definitions (see [PATTERN_AVAILABILITY_GUIDE.md](PATTERN_AVAILABILITY_GUIDE.md))
+- **Interactive CLI Wizard**: User-friendly input builder with pattern toggle interface
+- **Flexible Room Assignment**: Auto-generates 10 theory rooms + 1 practical room (no manual room input needed)
 - **Spread Subjects**: Distributes certain subjects evenly across the semester for better learning retention
-- **Practical Subject Mixing**: Mixes practical subjects (A, B, C, D) across the semester to ensure variety
+- **Practical Subject Mixing**: Mixes practical subjects across the semester to ensure variety
 - **Conflict Resolution**: Automatically prevents scheduling conflicts for lecturers, rooms, and student groups
+- **Comprehensive Visualizations**: Input data plots, room/group/lecturer calendars, weekly overviews, utilization heatmaps
 - **Detailed Statistics**: Provides comprehensive scheduling statistics and utilization reports
+- **Standalone Apps**: PyInstaller macOS binaries for non-technical users
 
 ## Problem Specification
 
@@ -34,19 +38,39 @@ cd planner_osteo
 python3 main.py
 ```
 
-## Usage
+## Quick Start
 
-### Running the Scheduler
+### All-in-One App (Recommended)
+```bash
+python3 app_cli.py
+# or double-click: start_all_in_one.command
+```
 
+Menu options:
+1. **Edit input (wizard)** - Interactive pattern builder for lecturer availability
+2. **Validate input** - Check data integrity
+3. **Run scheduler** - Generate optimized schedule
+4. **Visualize input data** - See subjects, lecturers, constraints
+5. **Visualize schedule** - Room/group/lecturer calendars + weekly overviews
+
+### Command Line Usage
+
+**Edit input data:**
+```bash
+python3 user_input_cli.py
+# or: ./start_wizard.command
+```
+
+**Run scheduler only:**
 ```bash
 python3 main.py
 ```
 
-This will:
-1. Generate sample data (lecturers, subjects, rooms, groups)
-2. Create an optimized schedule
-3. Display scheduling statistics
-4. Save detailed schedule to `schedule_output.txt`
+**Visualize:**
+```bash
+python3 visualize_input_data.py  # Input plots
+python3 visualize_schedule.py     # Schedule calendars
+```
 
 ### Output
 
@@ -112,16 +136,58 @@ Edit `scheduler.py` to modify:
 - Priority weighting
 - Room assignment logic
 
+## Key New Features
+
+### Pattern-Based Availability (🆕)
+Dramatically simplifies lecturer availability input:
+- **Old way**: 150+ manual entries per lecturer
+- **New way**: ~10 pattern definitions
+
+See [PATTERN_AVAILABILITY_GUIDE.md](PATTERN_AVAILABILITY_GUIDE.md) for complete guide.
+
+**Example:**
+```json
+"availability": {
+  "patterns": [{"weeks": "1-15", "days": {"Mon": ["morning", "afternoon"], "Wed": ["morning"]}}],
+  "exceptions": [{"week": 7, "day": "Mon", "remove": ["afternoon"]}],
+  "blackouts": [{"from_week": 13, "to_week": 13, "days": []}]
+}
+```
+
+Interactive CLI with toggle interface:
+```
+  slot> all
+    Day       Morning Afternoon
+    Mon         ✓         ✓
+    Tue         ✓         ✓
+```
+
 ## Project Structure
 
 ```
 planner_osteo/
-├── README.md           # This file
-├── main.py            # Entry point
-├── models.py          # Data models
-├── scheduler.py       # Scheduling algorithm
-├── sample_data.py     # Sample data generator
-└── schedule_output.txt # Generated schedule (created on run)
+├── README.md                       # This file
+├── PATTERN_AVAILABILITY_GUIDE.md   # NEW: Complete pattern guide
+├── IMPLEMENTATION_SUMMARY.md       # Technical documentation
+├── main.py                         # Scheduler entry point
+├── app_cli.py                      # All-in-one menu app
+├── user_input_cli.py              # Interactive wizard with pattern builder
+├── models.py                       # Data models
+├── scheduler.py                    # Scheduling algorithm
+├── data_loader.py                  # JSON loader with pattern expansion
+├── validate_input.py               # Input validation
+├── visualize_input_data.py         # Input visualizations
+├── visualize_schedule.py           # Schedule visualizations
+├── test_pattern_availability.py    # Pattern tests
+├── demo_pattern_availability.py    # Demo and conversion tool
+├── input_data.json                 # Input data
+├── schedule_output.txt            # Generated schedule
+├── images/                         # Visualization outputs
+│   ├── input/                     # Input data plots
+│   └── schedule/                  # Schedule calendars
+└── dist/                          # Standalone macOS apps
+    ├── PlannerAllInOne
+    └── PlannerInputWizard
 ```
 
 ## Requirements

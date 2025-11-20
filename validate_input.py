@@ -18,8 +18,8 @@ def load_json(path: str = "input_data.json") -> Dict[str, Any]:
 def validate_data(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     errors: List[str] = []
 
-    # Basic presence
-    for key in ["subjects", "lecturers", "rooms", "student_groups", "configuration"]:
+    # Basic presence (rooms key is optional now as they're auto-generated)
+    for key in ["subjects", "lecturers", "student_groups", "configuration"]:
         if key not in data:
             errors.append(f"Missing top-level key: {key}")
             return False, errors

@@ -325,7 +325,7 @@ def delete_group(data: Dict[str, Any]):
 
 def lecturers_menu(data: Dict[str, Any]):
     while True:
-        ch = list_menu(["Add lecturer", "Edit lecturer", "Delete lecturer", "List lecturers"], "Lecturers")
+        ch = list_menu(["Add lecturer", "Edit lecturer", "Delete lecturer", "List lecturers", "Build availability (patterns)", "Convert availability format"], "Lecturers")
         if ch == 0:
             return
         if ch == 1:
@@ -336,7 +336,12 @@ def lecturers_menu(data: Dict[str, Any]):
             delete_lecturer(data)
         elif ch == 4:
             for l in data["lecturers"]:
-                print(f"  - {l['id']}: {l['name']} subj={l['subject_id']} priority={l['priority']} avail={len(l.get('availability', []))} slots")
+                summary = summarize_availability(l.get('availability'))
+                print(f"  - {l['id']}: {l['name']} subj={l['subject_id']} priority={l['priority']} {summary}")
+        elif ch == 5:
+            pattern_builder_global(data)
+        elif ch == 6:
+            convert_availability_global(data)
 
 
 def add_lecturer(data: Dict[str, Any]):
@@ -349,8 +354,11 @@ def add_lecturer(data: Dict[str, Any]):
     subject_id = prompt("Subject ID (existing)", validator=v_nonempty)
     priority = prompt("Priority (1=highest)", validator=v_int(1))
     availability = []
-    if priority <= 5 and yes_no("Add availability slots now?", default=True):
-        availability = prompt_availability(data)
+    if priority <= 5:
+        if yes_no("Use pattern-based availability builder?", default=True):
+            availability = pattern_builder_single(data)
+        elif yes_no("Enter raw slots manually?", default=False):
+            availability = prompt_availability(data)
     data["lecturers"].append({
         "id": lid,
         "name": name,
@@ -399,8 +407,173 @@ def edit_lecturer(data: Dict[str, Any]):
     l["subject_id"] = prompt("Subject ID", default=l["subject_id"], validator=v_nonempty)
     l["priority"] = prompt("Priority", default=l["priority"], validator=v_int(1))
     if l["priority"] <= 5 and yes_no("Edit availability?", default=False):
-        l["availability"] = prompt_availability(data)
+        # Detect format
+        current = l.get('availability', [])
+        print(f"Current availability format: {'pattern' if isinstance(current, dict) else 'list'}")
+        mode_choice = list_menu(["Pattern builder", "Manual slot list", "Cancel"], "Edit Availability Mode")
+        if mode_choice == 1:
+            l["availability"] = pattern_builder_single(data, existing=current if isinstance(current, dict) else None)
+        elif mode_choice == 2:
+            l["availability"] = prompt_availability(data)
+        else:
+            print("  ✱ Availability unchanged")
     print("  ✓ Lecturer updated")
+
+# ---- Availability Helpers ----
+
+DAY_CODES = ["Mon","Tue","Wed","Thu","Fri"]
+
+def summarize_availability(avail) -> str:
+    if not avail:
+        return "avail=0 slots"
+    if isinstance(avail, list):
+        return f"avail={len(avail)} slots (list)"
+    if isinstance(avail, dict):
+        patterns = len(avail.get('patterns', []) or [])
+        exceptions = len(avail.get('exceptions', []) or [])
+        blackouts = len(avail.get('blackouts', []) or [])
+        return f"patterns={patterns}, exceptions={exceptions}, blackouts={blackouts}"
+    return "avail=?"
+
+def pattern_builder_single(data: Dict[str, Any], existing: Dict[str, Any] = None) -> Dict[str, Any]:
+    weeks_total = data["configuration"]["weeks"]
+    print(f"\nPattern Availability Builder (weeks 1..{weeks_total})")
+    if existing:
+        print("Existing patterns detected; starting with them.")
+    availability = existing.copy() if existing else {"patterns": [], "exceptions": [], "blackouts": []}
+
+    while True:
+        print("\nAdd / Edit a Pattern")
+        weeks_expr = prompt("Weeks expression (e.g. 1-5,7,10-12)", default=f"1-{weeks_total}")
+        # Initialize empty selection grid
+        selection = {d: {"morning": False, "afternoon": False} for d in DAY_CODES}
+        # Interactive toggling loop
+        print("Toggle slots. Commands: 'mon m', 'tue a', 'wed both', 'all', 'done', 'show'.")
+        while True:
+            cmd = input("  slot> ").strip().lower()
+            if cmd in ("done", "finish"):
+                break
+            if cmd == "show":
+                _print_selection(selection)
+                continue
+            if cmd == "all":
+                for d in DAY_CODES:
+                    selection[d]["morning"] = True
+                    selection[d]["afternoon"] = True
+                _print_selection(selection)
+                continue
+            parts = cmd.split()
+            if not parts:
+                continue
+            day_part = parts[0]
+            slot_part = parts[1] if len(parts) > 1 else None
+            day_match = _match_day(day_part)
+            if not day_match:
+                print("  ✗ Unknown day code")
+                continue
+            if slot_part in (None, "both"):
+                selection[day_match]["morning"] = not selection[day_match]["morning"]
+                selection[day_match]["afternoon"] = not selection[day_match]["afternoon"]
+            elif slot_part in ("m", "morning"):
+                selection[day_match]["morning"] = not selection[day_match]["morning"]
+            elif slot_part in ("a", "afternoon"):
+                selection[day_match]["afternoon"] = not selection[day_match]["afternoon"]
+            else:
+                print("  ✗ Unknown slot; use morning/m or afternoon/a/both")
+                continue
+            _print_selection(selection)
+        # Build pattern days map
+        days_map = {}
+        for d in DAY_CODES:
+            slots = [s for s, v in selection[d].items() if v]
+            if slots:
+                days_map[d] = slots
+        availability["patterns"].append({"weeks": weeks_expr, "days": days_map})
+        print("  ✓ Pattern added")
+        if not yes_no("Add another pattern?", default=False):
+            break
+
+    # Exceptions
+    if yes_no("Add exceptions (specific adds/removes)?", default=False):
+        while True:
+            week = prompt("Exception week", validator=v_int(1, weeks_total))
+            day = prompt("Day (Mon/Tue/...)", validator=v_choice(DAY_CODES))
+            action = prompt("Action (remove/add)", validator=v_choice(["remove","add"]))
+            slots_raw = prompt("Slots comma list (morning,afternoon)", default="morning")
+            slots = [s.strip() for s in slots_raw.split(',') if s.strip() in TYPESLOTS]
+            availability["exceptions"].append({"week": week, "day": day, action: slots})
+            print("  ✓ Exception added")
+            if not yes_no("Add another exception?", default=False):
+                break
+
+    # Blackouts
+    if yes_no("Add blackouts (vacation ranges)?", default=False):
+        while True:
+            from_w = prompt("From week", validator=v_int(1, weeks_total))
+            to_w = prompt("To week", default=from_w, validator=v_int(1, weeks_total))
+            days_raw = prompt("Days comma list (blank=all)", default="")
+            days_list = [d.strip() for d in days_raw.split(',') if d.strip() in DAY_CODES]
+            availability["blackouts"].append({"from_week": from_w, "to_week": to_w, "days": days_list})
+            print("  ✓ Blackout added")
+            if not yes_no("Add another blackout?", default=False):
+                break
+
+    return availability
+
+def _match_day(token: str) -> str:
+    token = token.lower()
+    for d in DAY_CODES:
+        if d.lower().startswith(token):
+            return d
+    return None
+
+def _print_selection(selection: Dict[str, Dict[str,bool]]):
+    print("    Day       Morning Afternoon")
+    for d in DAY_CODES:
+        m = '✓' if selection[d]['morning'] else '·'
+        a = '✓' if selection[d]['afternoon'] else '·'
+        print(f"    {d:<3}       {m:^7} {a:^9}")
+
+def pattern_builder_global(data: Dict[str, Any]):
+    print("\nAssign patterns to multiple lecturers (priority <=5).")
+    targets = [l for l in data['lecturers'] if l.get('priority', 999) <= 5]
+    if not targets:
+        print("  ✗ No priority lecturers found.")
+        return
+    print("Priority lecturers:")
+    for l in targets:
+        print(f"  - {l['id']}: {l['name']} ({summarize_availability(l.get('availability'))})")
+    if not yes_no("Proceed building a pattern and apply to all (append)?", default=False):
+        return
+    pattern_avail = pattern_builder_single(data)
+    for l in targets:
+        existing = l.get('availability')
+        if isinstance(existing, dict):
+            existing['patterns'].extend(pattern_avail['patterns'])
+            existing['exceptions'].extend(pattern_avail['exceptions'])
+            existing['blackouts'].extend(pattern_avail['blackouts'])
+        else:
+            l['availability'] = pattern_avail
+    print("  ✓ Pattern applied to all priority lecturers")
+
+def convert_availability_global(data: Dict[str, Any]):
+    print("\nConvert list-based availability to pattern schema.")
+    for l in data['lecturers']:
+        avail = l.get('availability')
+        if isinstance(avail, list) and avail:
+            # Group by day/slot ignoring weeks for a base pattern
+            weeks_total = data['configuration']['weeks']
+            weeks_expr = f"1-{weeks_total}"
+            day_slot = {d: set() for d in DAY_CODES}
+            for w, d, slot in avail:
+                # d is numeric day (1-5)
+                day_name = DAY_CODES[d - 1] if 1 <= d <= 5 else None
+                if day_name:
+                    day_slot[day_name].add(slot)
+            days_map = {d: sorted(slots) for d, slots in day_slot.items() if slots}
+            l['availability'] = {"patterns": [{"weeks": weeks_expr, "days": days_map}], "exceptions": [], "blackouts": []}
+            print(f"  ✓ Converted lecturer {l['id']} -> pattern format")
+    print("Conversion complete.")
 
 
 def delete_lecturer(data: Dict[str, Any]):

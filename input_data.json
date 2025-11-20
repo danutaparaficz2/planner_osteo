@@ -80,7 +80,7 @@
     {
       "id": "A",
       "name": "Practical A - Palpation",
-      "blocks_required": 12,
+      "blocks_required": 14,
       "room_type": "practical",
       "spread": false
     },
@@ -113,16 +113,106 @@
       "subject_id": "S1",
       "priority": 1,
       "availability": [
-        [0, 1, "morning"], [0, 1, "afternoon"],
-        [0, 2, "morning"], [0, 3, "afternoon"],
-        [0, 4, "morning"], [0, 5, "afternoon"],
-        [1, 1, "morning"], [1, 2, "afternoon"],
-        [1, 3, "morning"], [1, 4, "afternoon"],
-        [2, 1, "morning"], [2, 2, "morning"],
-        [2, 3, "afternoon"], [2, 4, "morning"],
-        [3, 1, "afternoon"], [3, 2, "morning"],
-        [3, 3, "afternoon"], [3, 5, "morning"],
-        [4, 1, "morning"], [4, 2, "afternoon"]
+        [
+          0,
+          1,
+          "morning"
+        ],
+        [
+          0,
+          1,
+          "afternoon"
+        ],
+        [
+          0,
+          2,
+          "morning"
+        ],
+        [
+          0,
+          3,
+          "afternoon"
+        ],
+        [
+          0,
+          4,
+          "morning"
+        ],
+        [
+          0,
+          5,
+          "afternoon"
+        ],
+        [
+          1,
+          1,
+          "morning"
+        ],
+        [
+          1,
+          2,
+          "afternoon"
+        ],
+        [
+          1,
+          3,
+          "morning"
+        ],
+        [
+          1,
+          4,
+          "afternoon"
+        ],
+        [
+          2,
+          1,
+          "morning"
+        ],
+        [
+          2,
+          2,
+          "morning"
+        ],
+        [
+          2,
+          3,
+          "afternoon"
+        ],
+        [
+          2,
+          4,
+          "morning"
+        ],
+        [
+          3,
+          1,
+          "afternoon"
+        ],
+        [
+          3,
+          2,
+          "morning"
+        ],
+        [
+          3,
+          3,
+          "afternoon"
+        ],
+        [
+          3,
+          5,
+          "morning"
+        ],
+        [
+          4,
+          1,
+          "morning"
+        ],
+        [
+          4,
+          2,
+          "afternoon"
+        ]
       ]
     },
     {
@@ -131,14 +221,86 @@
       "subject_id": "S2",
       "priority": 2,
       "availability": [
-        [0, 1, "afternoon"], [0, 2, "morning"],
-        [0, 3, "morning"], [0, 4, "afternoon"],
-        [1, 1, "afternoon"], [1, 2, "morning"],
-        [1, 3, "afternoon"], [1, 4, "morning"],
-        [1, 5, "afternoon"], [2, 1, "afternoon"],
-        [2, 2, "afternoon"], [2, 3, "morning"],
-        [3, 1, "morning"], [3, 2, "afternoon"],
-        [3, 4, "morning"], [4, 1, "afternoon"]
+        [
+          0,
+          1,
+          "afternoon"
+        ],
+        [
+          0,
+          2,
+          "morning"
+        ],
+        [
+          0,
+          3,
+          "morning"
+        ],
+        [
+          0,
+          4,
+          "afternoon"
+        ],
+        [
+          1,
+          1,
+          "afternoon"
+        ],
+        [
+          1,
+          2,
+          "morning"
+        ],
+        [
+          1,
+          3,
+          "afternoon"
+        ],
+        [
+          1,
+          4,
+          "morning"
+        ],
+        [
+          1,
+          5,
+          "afternoon"
+        ],
+        [
+          2,
+          1,
+          "afternoon"
+        ],
+        [
+          2,
+          2,
+          "afternoon"
+        ],
+        [
+          2,
+          3,
+          "morning"
+        ],
+        [
+          3,
+          1,
+          "morning"
+        ],
+        [
+          3,
+          2,
+          "afternoon"
+        ],
+        [
+          3,
+          4,
+          "morning"
+        ],
+        [
+          4,
+          1,
+          "afternoon"
+        ]
       ]
     },
     {
@@ -147,13 +309,76 @@
       "subject_id": "S3",
       "priority": 3,
       "availability": [
-        [0, 2, "afternoon"], [0, 3, "morning"],
-        [0, 4, "morning"], [0, 5, "morning"],
-        [1, 1, "morning"], [1, 3, "morning"],
-        [1, 4, "afternoon"], [2, 1, "morning"],
-        [2, 2, "morning"], [2, 4, "afternoon"],
-        [3, 2, "morning"], [3, 3, "morning"],
-        [3, 5, "afternoon"], [4, 2, "morning"]
+        [
+          0,
+          2,
+          "afternoon"
+        ],
+        [
+          0,
+          3,
+          "morning"
+        ],
+        [
+          0,
+          4,
+          "morning"
+        ],
+        [
+          0,
+          5,
+          "morning"
+        ],
+        [
+          1,
+          1,
+          "morning"
+        ],
+        [
+          1,
+          3,
+          "morning"
+        ],
+        [
+          1,
+          4,
+          "afternoon"
+        ],
+        [
+          2,
+          1,
+          "morning"
+        ],
+        [
+          2,
+          2,
+          "morning"
+        ],
+        [
+          2,
+          4,
+          "afternoon"
+        ],
+        [
+          3,
+          2,
+          "morning"
+        ],
+        [
+          3,
+          3,
+          "morning"
+        ],
+        [
+          3,
+          5,
+          "afternoon"
+        ],
+        [
+          4,
+          2,
+          "morning"
+        ]
       ]
     },
     {
@@ -162,12 +387,66 @@
       "subject_id": "S4",
       "priority": 4,
       "availability": [
-        [0, 1, "morning"], [0, 2, "afternoon"],
-        [0, 4, "afternoon"], [1, 1, "afternoon"],
-        [1, 2, "morning"], [1, 3, "afternoon"],
-        [2, 1, "afternoon"], [2, 3, "morning"],
-        [2, 5, "morning"], [3, 1, "morning"],
-        [3, 3, "afternoon"], [4, 1, "morning"]
+        [
+          0,
+          1,
+          "morning"
+        ],
+        [
+          0,
+          2,
+          "afternoon"
+        ],
+        [
+          0,
+          4,
+          "afternoon"
+        ],
+        [
+          1,
+          1,
+          "afternoon"
+        ],
+        [
+          1,
+          2,
+          "morning"
+        ],
+        [
+          1,
+          3,
+          "afternoon"
+        ],
+        [
+          2,
+          1,
+          "afternoon"
+        ],
+        [
+          2,
+          3,
+          "morning"
+        ],
+        [
+          2,
+          5,
+          "morning"
+        ],
+        [
+          3,
+          1,
+          "morning"
+        ],
+        [
+          3,
+          3,
+          "afternoon"
+        ],
+        [
+          4,
+          1,
+          "morning"
+        ]
       ]
     },
     {
@@ -176,14 +455,86 @@
       "subject_id": "S5",
       "priority": 5,
       "availability": [
-        [0, 1, "afternoon"], [0, 2, "morning"],
-        [0, 3, "afternoon"], [0, 4, "morning"],
-        [0, 5, "afternoon"], [1, 2, "afternoon"],
-        [1, 3, "morning"], [1, 4, "morning"],
-        [2, 1, "morning"], [2, 2, "afternoon"],
-        [2, 3, "afternoon"], [2, 5, "afternoon"],
-        [3, 1, "afternoon"], [3, 4, "afternoon"],
-        [4, 2, "afternoon"], [4, 3, "morning"]
+        [
+          0,
+          1,
+          "afternoon"
+        ],
+        [
+          0,
+          2,
+          "morning"
+        ],
+        [
+          0,
+          3,
+          "afternoon"
+        ],
+        [
+          0,
+          4,
+          "morning"
+        ],
+        [
+          0,
+          5,
+          "afternoon"
+        ],
+        [
+          1,
+          2,
+          "afternoon"
+        ],
+        [
+          1,
+          3,
+          "morning"
+        ],
+        [
+          1,
+          4,
+          "morning"
+        ],
+        [
+          2,
+          1,
+          "morning"
+        ],
+        [
+          2,
+          2,
+          "afternoon"
+        ],
+        [
+          2,
+          3,
+          "afternoon"
+        ],
+        [
+          2,
+          5,
+          "afternoon"
+        ],
+        [
+          3,
+          1,
+          "afternoon"
+        ],
+        [
+          3,
+          4,
+          "afternoon"
+        ],
+        [
+          4,
+          2,
+          "afternoon"
+        ],
+        [
+          4,
+          3,
+          "morning"
+        ]
       ]
     },
     {
@@ -292,99 +643,69 @@
       "availability": []
     }
   ],
-  "rooms": [
-    {
-      "id": "R1",
-      "name": "Theory Room 1",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "R2",
-      "name": "Theory Room 2",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "R3",
-      "name": "Theory Room 3",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "R4",
-      "name": "Theory Room 4",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "R5",
-      "name": "Theory Room 5",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "R6",
-      "name": "Theory Room 6",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "R7",
-      "name": "Theory Room 7",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "R8",
-      "name": "Theory Room 8",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "R9",
-      "name": "Theory Room 9",
-      "room_type": "theory",
-      "capacity": 30
-    },
-    {
-      "id": "RP1",
-      "name": "Practical Room",
-      "room_type": "practical",
-      "capacity": 20
-    }
-  ],
   "student_groups": [
     {
       "id": "G1",
       "name": "Group 1 - Year 1",
-      "subject_ids": ["S1", "S2", "S6", "S9", "A"]
+      "subject_ids": [
+        "S1",
+        "S2",
+        "S6",
+        "S9",
+        "A"
+      ]
     },
     {
       "id": "G2",
       "name": "Group 2 - Year 2",
-      "subject_ids": ["S3", "S4", "S7", "S10", "B"]
+      "subject_ids": [
+        "S3",
+        "S4",
+        "S7",
+        "S10",
+        "B"
+      ]
     },
     {
       "id": "G3",
       "name": "Group 3 - Year 3",
-      "subject_ids": ["S5", "S8", "S11", "C"]
+      "subject_ids": [
+        "S5",
+        "S8",
+        "S11",
+        "C"
+      ]
     },
     {
       "id": "G4",
       "name": "Group 4 - Advanced",
-      "subject_ids": ["S1", "S3", "S5", "D"]
+      "subject_ids": [
+        "S1",
+        "S3",
+        "S5",
+        "D"
+      ]
     },
     {
       "id": "G5",
       "name": "Group 5 - Foundation",
-      "subject_ids": ["S2", "S4", "S6", "S8", "A", "C"]
+      "subject_ids": [
+        "S2",
+        "S4",
+        "S6",
+        "S8",
+        "A",
+        "C"
+      ]
     }
   ],
   "configuration": {
     "weeks": 15,
     "days_per_week": 5,
     "timeslots_per_day": 2,
-    "timeslots": ["morning", "afternoon"]
+    "timeslots": [
+      "morning",
+      "afternoon"
+    ]
   }
 }

@@ -149,6 +149,57 @@ Shows good variety and mixing across the semester.
 5. **Flexible Configuration**: Easy to modify data and behavior
 6. **Comprehensive Testing**: Full test coverage with validation
 
+## Lecturer Availability Schema Upgrade (New)
+
+To reduce manual input effort, a new availability schema for lecturers is supported alongside the legacy per-slot list.
+
+### Old Format (Still Works)
+```
+"availability": [ [1, 1, "morning"], [1, 1, "afternoon"], ... ]
+```
+Each triple = (week, day(1-5), timeslot).
+
+### New Concise Format
+```
+"availability": {
+  "patterns": [
+    {
+      "weeks": "1-15",
+      "days": {
+        "Mon": ["morning", "afternoon"],
+        "Tue": ["morning"],
+        "Wed": [],
+        "Thu": ["afternoon"],
+        "Fri": ["morning"]
+      }
+    },
+    { "weeks": "9-12", "days": { "Wed": ["morning"] } }
+  ],
+  "exceptions": [
+    { "week": 7, "day": "Tue", "remove": ["afternoon"] },
+    { "week": 10, "day": "Fri", "add": ["afternoon"] }
+  ],
+  "blackouts": [
+    { "from_week": 13, "to_week": 13, "days": ["Thu","Fri"] }
+  ]
+}
+```
+
+### Resolution Order
+1. Apply `patterns` sequentially (later patterns can add slots).
+2. Apply `exceptions` (remove before add operations).
+3. Apply `blackouts` (remove both morning & afternoon for specified days in week range).
+
+### Advantages
+- Reduces 150+ manual entries to a handful of pattern definitions.
+- Supports mid-semester variations without rewriting all weeks.
+- Clean override semantics via exceptions and blackouts.
+- Backward compatible: old lists still load correctly.
+
+### Internals
+`data_loader.py` expands the new schema to the same internal set of `(week, day, TimeSlot)` tuples used by the scheduler. No changes required elsewhere.
+
+
 ## Files Summary
 
 ```
