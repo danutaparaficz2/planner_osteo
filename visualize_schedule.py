@@ -4,6 +4,8 @@ Creates visual calendars showing the schedule by room and student group.
 """
 import json
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import Rectangle
@@ -49,7 +51,7 @@ def parse_schedule_output(filename='schedule_output.txt'):
                 
                 timeslot_content = timeslot_match.group(1)
                 
-                # Parse individual blocks
+                # Parse individual blocks - now expects "Room #X (type)" format
                 blocks = re.findall(
                     r'- Subject: (.*?) \((.*?)\)\s+Lecturer: (.*?)\s+Group: (.*?)\s+Room: (.*?) \((.*?)\)',
                     timeslot_content
@@ -65,7 +67,7 @@ def parse_schedule_output(filename='schedule_output.txt'):
                         'subject_id': block[1],
                         'lecturer': block[2],
                         'group': block[3],
-                        'room': block[4],
+                        'room': block[4],  # Now contains "Room #X" format
                         'room_type': block[5]
                     })
     
@@ -85,8 +87,8 @@ def create_room_calendar(schedule_blocks, weeks=15):
             continue
         
         # Create figure
-        fig, axes = plt.subplots(5, 3, figsize=(20, 14))
-        fig.suptitle(f'Room Calendar: {room}', fontsize=16, fontweight='bold')
+        fig, axes = plt.subplots(5, 3, figsize=(16, 10))
+        fig.suptitle(f'Room Calendar: {room}', fontsize=14, fontweight='bold')
         
         # Flatten axes for easier indexing
         axes = axes.flatten()
@@ -132,7 +134,7 @@ def create_room_calendar(schedule_blocks, weeks=15):
             
             # Set limits and labels
             ax.set_xlim(-0.1, 5)
-            ax.set_ylim(-0.1, 1.5)
+            ax.set_ylim(-0.5, 1.5)
             ax.set_xticks(np.arange(5) + 0.45)
             ax.set_xticklabels(days)
             ax.set_yticks([0.2, 0.8])
@@ -158,7 +160,7 @@ def create_room_calendar(schedule_blocks, weeks=15):
         output_dir = os.path.join('images', 'schedule')
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, f'calendar_room_{room_filename}.png')
-        fig.savefig(path, dpi=150, bbox_inches='tight')
+        fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
         print(f"✓ Room calendar saved: {path}")
         plt.close(fig)
 
@@ -176,8 +178,8 @@ def create_group_calendar(schedule_blocks, weeks=15):
             continue
         
         # Create figure
-        fig, axes = plt.subplots(5, 3, figsize=(20, 14))
-        fig.suptitle(f'Student Group Calendar: {group}', fontsize=16, fontweight='bold')
+        fig, axes = plt.subplots(5, 3, figsize=(16, 10))
+        fig.suptitle(f'Student Group Calendar: {group}', fontsize=14, fontweight='bold')
         
         # Flatten axes for easier indexing
         axes = axes.flatten()
@@ -211,8 +213,9 @@ def create_group_calendar(schedule_blocks, weeks=15):
                                        facecolor=color, edgecolor='black', linewidth=1.5, alpha=0.7)
                         ax.add_patch(rect)
                         
-                        # Add text
-                        text = f"{block['subject_id']}\n{block['room'].split()[0]}"
+                        # Show room number (e.g., "#5")
+                        room_display = block['room'].replace('Room ', '')
+                        text = f"{block['subject_id']}\n{room_display}"
                         ax.text(x + 0.45, y - 0.2, text, 
                                ha='center', va='center', fontsize=7, fontweight='bold')
                     else:
@@ -223,7 +226,7 @@ def create_group_calendar(schedule_blocks, weeks=15):
             
             # Set limits and labels
             ax.set_xlim(-0.1, 5)
-            ax.set_ylim(-0.1, 1.5)
+            ax.set_ylim(-0.5, 1.5)
             ax.set_xticks(np.arange(5) + 0.45)
             ax.set_xticklabels(days)
             ax.set_yticks([0.2, 0.8])
@@ -249,7 +252,7 @@ def create_group_calendar(schedule_blocks, weeks=15):
         output_dir = os.path.join('images', 'schedule')
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, f'calendar_group_{group_filename}.png')
-        fig.savefig(path, dpi=150, bbox_inches='tight')
+        fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
         print(f"✓ Group calendar saved: {path}")
         plt.close(fig)
 
@@ -264,9 +267,9 @@ def create_weekly_overview(schedule_blocks, weeks_to_show=5):
             continue
         
         # Create figure
-        fig, ax = plt.subplots(figsize=(18, 10))
+        fig, ax = plt.subplots(figsize=(16, 9))
         fig.suptitle(f'Week {week} - Complete Schedule Overview', 
-                    fontsize=16, fontweight='bold')
+                fontsize=14, fontweight='bold')
         
         # Get unique rooms and sort them
         rooms = sorted(set(block['room'] for block in week_blocks))
@@ -334,16 +337,18 @@ def create_weekly_overview(schedule_blocks, weeks_to_show=5):
         # Set axis properties
         ax.set_xlim(-1, 10)
         ax.set_ylim(-0.5, len(rooms) + 0.5)
-        
-        # X-axis labels
-        x_labels = []
-        x_positions = []
-        for i, day in enumerate(days):
-            x_labels.extend([f'{day}\nMorning', 'Afternoon'])
-            x_positions.extend([i * 2 + 0.45, i * 2 + 1.45])
-        
-        ax.set_xticks(x_positions)
-        ax.set_xticklabels(x_labels, fontsize=8)
+
+        # Add vertical lines to divide days (at boundaries between days)
+        for boundary in [0, 2, 4, 6, 8, 10]:
+            ax.axvline(boundary, color='lightgray', linewidth=1.0, alpha=0.8, zorder=0)
+
+        # X-axis: show day names on top, one label per day
+        day_centers = [i * 2 + 0.95 for i in range(len(days))]
+        ax.set_xticks(day_centers)
+        ax.set_xticklabels(days, fontsize=9, fontweight='bold')
+        ax.xaxis.tick_top()
+        ax.tick_params(axis='x', labelbottom=False)
+
         ax.set_yticks([])
         ax.set_ylabel('Rooms', fontsize=12, fontweight='bold')
         
@@ -362,7 +367,7 @@ def create_weekly_overview(schedule_blocks, weeks_to_show=5):
         output_dir = os.path.join('images', 'schedule')
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, f'calendar_week_{week}_overview.png')
-        fig.savefig(path, dpi=150, bbox_inches='tight')
+        fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
         print(f"✓ Week {week} overview saved: {path}")
         plt.close(fig)
 
@@ -370,8 +375,8 @@ def create_weekly_overview(schedule_blocks, weeks_to_show=5):
 def create_utilization_heatmap(schedule_blocks, weeks=15):
     """Create heatmaps showing room and group utilization"""
     
-    fig, axes = plt.subplots(1, 2, figsize=(18, 8))
-    fig.suptitle('Utilization Analysis', fontsize=16, fontweight='bold')
+    fig, axes = plt.subplots(1, 2, figsize=(14, 7))
+    fig.suptitle('Utilization Analysis', fontsize=14, fontweight='bold')
     
     # Room utilization heatmap
     ax = axes[0]
@@ -401,11 +406,7 @@ def create_utilization_heatmap(schedule_blocks, weeks=15):
     cbar = plt.colorbar(im, ax=ax)
     cbar.set_label('Number of Blocks', rotation=270, labelpad=15)
     
-    # Add values
-    for i in range(weeks):
-        for j in range(len(rooms)):
-            text = ax.text(j, i, int(room_utilization[i, j]),
-                          ha="center", va="center", color="black", fontsize=6)
+    # Omit per-cell value annotations to reduce render time and file size
     
     # Group utilization heatmap
     ax = axes[1]
@@ -434,20 +435,85 @@ def create_utilization_heatmap(schedule_blocks, weeks=15):
     cbar = plt.colorbar(im, ax=ax)
     cbar.set_label('Number of Blocks', rotation=270, labelpad=15)
     
-    # Add values
-    for i in range(weeks):
-        for j in range(len(groups)):
-            text = ax.text(j, i, int(group_utilization[i, j]),
-                          ha="center", va="center", color="black", fontsize=7)
+    # Omit per-cell value annotations to reduce render time and file size
     
     plt.tight_layout()
     output_dir = os.path.join('images', 'schedule')
     os.makedirs(output_dir, exist_ok=True)
     path = os.path.join(output_dir, 'calendar_utilization_heatmap.png')
-    fig.savefig(path, dpi=150, bbox_inches='tight')
+    fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
     print(f"✓ Utilization heatmap saved: {path}")
     plt.close(fig)
 
+
+def create_lecturer_calendar(schedule_blocks, weeks=15):
+    """Create a calendar view showing each lecturer's schedule"""
+    lecturers = sorted(set(block['lecturer'] for block in schedule_blocks))
+
+    for lecturer in lecturers:
+        lec_blocks = [b for b in schedule_blocks if b['lecturer'] == lecturer]
+        if not lec_blocks:
+            continue
+
+        fig, axes = plt.subplots(5, 3, figsize=(16, 10))
+        fig.suptitle(f'Lecturer Calendar: {lecturer}', fontsize=14, fontweight='bold')
+        axes = axes.flatten()
+
+        for week in range(1, min(weeks + 1, 16)):
+            ax = axes[week - 1]
+            week_blocks = [b for b in lec_blocks if b['week'] == week]
+
+            days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+
+            for day_idx in range(5):
+                for slot_idx in range(2):
+                    x = day_idx
+                    y = 1 - slot_idx
+                    day_num = day_idx + 1
+                    timeslot = 'morning' if slot_idx == 0 else 'afternoon'
+                    block = next((b for b in week_blocks if b['day'] == day_num and b['timeslot'] == timeslot), None)
+
+                    if block:
+                        color = '#e74c3c' if block['room_type'] == 'practical' else '#3498db'
+                        rect = Rectangle((x, y - 0.4), 0.9, 0.4,
+                                         facecolor=color, edgecolor='black', linewidth=1.5, alpha=0.7)
+                        ax.add_patch(rect)
+                        # Show room number (e.g., "#5")
+                        room_display = block['room'].replace('Room ', '')
+                        text = f"{block['subject_id']}\n{room_display}"
+                        ax.text(x + 0.45, y - 0.2, text, ha='center', va='center', fontsize=7, fontweight='bold')
+                    else:
+                        rect = Rectangle((x, y - 0.4), 0.9, 0.4,
+                                         facecolor='white', edgecolor='gray', linewidth=0.5, alpha=0.3)
+                        ax.add_patch(rect)
+
+            # Set limits and labels
+            ax.set_xlim(-0.1, 5)
+            ax.set_ylim(-0.5, 1.5)
+            ax.set_xticks(np.arange(5) + 0.45)
+            ax.set_xticklabels(days)
+            ax.set_yticks([0.2, 0.8])
+            ax.set_yticklabels(['Afternoon', 'Morning'])
+            ax.set_title(f'Week {week}', fontweight='bold')
+            ax.grid(False)
+            ax.set_aspect('equal')
+
+        for idx in range(weeks, len(axes)):
+            axes[idx].axis('off')
+
+        theory_patch = mpatches.Patch(color='#3498db', label='Theory', alpha=0.7)
+        practical_patch = mpatches.Patch(color='#e74c3c', label='Practical', alpha=0.7)
+        fig.legend(handles=[theory_patch, practical_patch], loc='lower right', fontsize=10)
+
+        plt.tight_layout()
+
+        lec_filename = lecturer.replace(' ', '_').replace('-', '_')
+        output_dir = os.path.join('images', 'schedule')
+        os.makedirs(output_dir, exist_ok=True)
+        path = os.path.join(output_dir, f'calendar_lecturer_{lec_filename}.png')
+        fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
+        print(f"✓ Lecturer calendar saved: {path}")
+        plt.close(fig)
 
 def main():
     """Main function to generate all calendar visualizations"""
@@ -465,11 +531,14 @@ def main():
     
     print("\n2. Student Group Calendars:")
     create_group_calendar(schedule_blocks, weeks=15)
+
+    print("\n3. Lecturer Calendars:")
+    create_lecturer_calendar(schedule_blocks, weeks=15)
     
-    print("\n3. Weekly Overviews:")
+    print("\n4. Weekly Overviews:")
     create_weekly_overview(schedule_blocks, weeks_to_show=5)
     
-    print("\n4. Utilization Analysis:")
+    print("\n5. Utilization Analysis:")
     create_utilization_heatmap(schedule_blocks, weeks=15)
     
     print("\n" + "="*60)

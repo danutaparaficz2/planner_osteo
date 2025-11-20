@@ -36,9 +36,11 @@ class Room:
     name: str
     room_type: RoomType
     capacity: int
+    room_number: Optional[str] = None
     
     def __repr__(self):
-        return f"Room({self.id}: {self.name}, {self.room_type.value})"
+        num = f" #{self.room_number}" if self.room_number else ""
+        return f"Room({self.id}: {self.name}{num}, {self.room_type.value})"
 
 
 @dataclass
@@ -81,6 +83,7 @@ class ScheduledBlock:
     week: int
     day: int  # 1-5 (Monday-Friday)
     timeslot: TimeSlot
+    room_number: Optional[str] = None
     
     def __repr__(self):
         return (f"ScheduledBlock(Week {self.week}, Day {self.day}, {self.timeslot.value}: "

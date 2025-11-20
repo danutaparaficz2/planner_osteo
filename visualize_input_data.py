@@ -4,6 +4,8 @@ Creates comprehensive plots to understand the scheduling problem.
 """
 import json
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from collections import defaultdict, Counter
@@ -20,7 +22,7 @@ def plot_subjects_overview(data):
     """Plot subjects by type, blocks required, and spread requirement"""
     subjects = data['subjects']
     
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle('Subjects Overview', fontsize=16, fontweight='bold')
     
     # 1. Subjects by room type
@@ -95,7 +97,7 @@ def plot_lecturers_analysis(data):
     """Plot lecturer priority distribution and availability"""
     lecturers = data['lecturers']
     
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle('Lecturers Analysis', fontsize=16, fontweight='bold')
     
     # 1. Lecturers by priority
@@ -210,7 +212,7 @@ def plot_rooms_and_groups(data):
     groups = data['student_groups']
     subjects = data['subjects']
     
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle('Rooms and Student Groups', fontsize=16, fontweight='bold')
     
     # 1. Room distribution by type
@@ -287,7 +289,7 @@ def plot_scheduling_constraints(data):
     rooms = data['rooms']
     groups = data['student_groups']
     
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle('Scheduling Constraints & Capacity Analysis', fontsize=16, fontweight='bold')
     
     # 1. Time capacity analysis
@@ -428,27 +430,31 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     fig1 = plot_subjects_overview(data)
-    fig1.savefig(os.path.join(output_dir, 'viz_subjects_overview.png'), dpi=150, bbox_inches='tight')
+    fig1.savefig(os.path.join(output_dir, 'viz_subjects_overview.png'), dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
     print("✓ Subjects overview saved to:", os.path.join(output_dir, 'viz_subjects_overview.png'))
+    plt.close(fig1)
     
     fig2 = plot_lecturers_analysis(data)
-    fig2.savefig(os.path.join(output_dir, 'viz_lecturers_analysis.png'), dpi=150, bbox_inches='tight')
+    fig2.savefig(os.path.join(output_dir, 'viz_lecturers_analysis.png'), dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
     print("✓ Lecturers analysis saved to:", os.path.join(output_dir, 'viz_lecturers_analysis.png'))
+    plt.close(fig2)
     
     fig3 = plot_rooms_and_groups(data)
-    fig3.savefig(os.path.join(output_dir, 'viz_rooms_and_groups.png'), dpi=150, bbox_inches='tight')
+    fig3.savefig(os.path.join(output_dir, 'viz_rooms_and_groups.png'), dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
     print("✓ Rooms and groups saved to:", os.path.join(output_dir, 'viz_rooms_and_groups.png'))
+    plt.close(fig3)
     
     fig4 = plot_scheduling_constraints(data)
-    fig4.savefig(os.path.join(output_dir, 'viz_scheduling_constraints.png'), dpi=150, bbox_inches='tight')
+    fig4.savefig(os.path.join(output_dir, 'viz_scheduling_constraints.png'), dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
     print("✓ Scheduling constraints saved to:", os.path.join(output_dir, 'viz_scheduling_constraints.png'))
+    plt.close(fig4)
     
     print("\n" + "="*60)
     print("All visualizations generated successfully!")
     print("="*60)
     
-    # Show all plots
-    plt.show()
+    # Ensure all figures are closed to free memory
+    plt.close('all')
 
 
 if __name__ == "__main__":

@@ -76,6 +76,54 @@ The scheduler will:
 2. Create a schedule prioritizing top 5 lecturers
 3. Save the output to `schedule_output.txt`
 
+## Easiest Way: Interactive Input Wizard (Recommended)
+
+Use the built-in interactive CLI to create or edit `input_data.json` without touching JSON manually:
+
+```bash
+python user_input_cli.py
+```
+
+What you can do:
+- Add/edit/delete Subjects, Lecturers, Rooms, and Student Groups
+- Edit configuration (weeks, days per week, timeslots per day)
+- For priority lecturers (1-5), add availability slots interactively
+- Validate inputs and save with automatic backup of the previous file
+
+Tips:
+- Press Enter to keep the shown default value
+- IDs must be unique within their category (e.g., subjects)
+- Room types: `theory` or `practical`
+- Timeslots: `morning` or `afternoon`
+
+## Validate Your Input
+
+Run validation to catch mistakes (missing IDs, wrong references, out-of-range availability, etc.):
+
+```bash
+python validate_input.py
+```
+
+You will get a pass/fail report with specific issues, if any. The scheduler expects a valid file.
+
+## macOS App (Optional)
+
+You can build a standalone macOS app for the input wizard (no coding required for users):
+
+```bash
+chmod +x build_macos_apps.sh
+./build_macos_apps.sh
+```
+
+Artifacts will appear in `dist/`:
+- `PlannerInputWizard` (double-clickable binary). When launched from Finder, it opens in Terminal and runs the interactive wizard.
+
+How to share:
+- Zip the entire project folder (including `dist/PlannerInputWizard`) and share.
+- Ask users to put `PlannerInputWizard` inside this project folder and double-click it. It reads/writes `input_data.json` next to itself.
+
+Note: Gatekeeper may require right-click → Open on first run.
+
 ## Modifying the Input Data
 
 To customize the schedule:
@@ -87,6 +135,12 @@ To customize the schedule:
 3. **Add/modify rooms**: Edit the `rooms` array
 4. **Add/modify groups**: Edit the `student_groups` array
 5. **Change semester length**: Modify `configuration.weeks`
+
+Alternatively, use the interactive wizard:
+
+```bash
+python user_input_cli.py
+```
 
 ## Example: Adding a New Lecturer
 

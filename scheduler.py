@@ -171,7 +171,8 @@ class OsteopathyScheduler:
             room_id=room.id,
             week=week,
             day=day,
-            timeslot=timeslot
+            timeslot=timeslot,
+            room_number=room.room_number
         )
         
         return self.schedule.add_block(block)
@@ -227,7 +228,8 @@ class OsteopathyScheduler:
                             room_id=practical_room.id,
                             week=week,
                             day=day,
-                            timeslot=timeslot
+                            timeslot=timeslot,
+                            room_number=practical_room.room_number
                         )
                         
                         if self.schedule.add_block(block):
@@ -289,10 +291,11 @@ class OsteopathyScheduler:
                             group = self.student_groups[block.student_group_id]
                             room = self.rooms[block.room_id]
                             
+                            room_display = f"Room #{room.room_number}" if room.room_number else room.name
                             output.append(f"      - Subject: {subject.name} ({subject.id})")
                             output.append(f"        Lecturer: {lecturer.name}")
                             output.append(f"        Group: {group.name}")
-                            output.append(f"        Room: {room.name} ({room.room_type.value})")
+                            output.append(f"        Room: {room_display} ({room.room_type.value})")
                             output.append("")
         
         output.append("=" * 80)
