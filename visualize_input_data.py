@@ -18,6 +18,27 @@ def load_input_data(filename='input_data.json'):
         return json.load(f)
 
 
+def get_availability_as_list(availability):
+    """
+    Convert availability to list format for visualization.
+    Handles both old list format and new pattern format.
+    For pattern format, attempts to use data_loader if available.
+    """
+    if isinstance(availability, list):
+        return availability
+    elif isinstance(availability, dict):
+        # Pattern-based format - try to expand it
+        try:
+            from data_loader import _expand_availability
+            # Convert to set of tuples, then back to list
+            expanded = _expand_availability(availability)
+            return list(expanded)
+        except:
+            # If data_loader not available, return empty list
+            return []
+    return []
+
+
 def plot_subjects_overview(data):
     """Plot subjects by type, blocks required, and spread requirement"""
     subjects = data['subjects']
@@ -118,7 +139,9 @@ def plot_lecturers_analysis(data):
     availability_counts = []
     labels = []
     for lecturer in top_lecturers:
-        count = len(lecturer['availability'])
+        # Convert to list format (handles both formats)
+        avail_list = get_availability_as_list(lecturer['availability'])
+        count = len(avail_list)
         availability_counts.append(count)
         labels.append(f"{lecturer['name']}\n(P{lecturer['priority']})")
     
@@ -135,7 +158,7 @@ def plot_lecturers_analysis(data):
     ax = axes[1, 0]
     if top_lecturers and top_lecturers[0]['availability']:
         top_lecturer = top_lecturers[0]
-        availability = top_lecturer['availability']
+        availability_list = get_availability_as_list(top_lecturer['availability'])
         
         # Create availability matrix (weeks x days x timeslots)
         weeks = 5  # Show first 5 weeks
@@ -145,7 +168,7 @@ def plot_lecturers_analysis(data):
         morning_matrix = np.zeros((weeks, days))
         afternoon_matrix = np.zeros((weeks, days))
         
-        for slot in availability:
+        for slot in availability_list:
             week, day, timeslot = slot
             if week < weeks and 1 <= day <= 5:
                 if timeslot == 'morning':
@@ -208,7 +231,11 @@ def plot_lecturers_analysis(data):
 
 def plot_rooms_and_groups(data):
     """Plot room capacity and student group assignments"""
-    rooms = data['rooms']
+    # Rooms are auto-generated now, create dummy data for visualization
+    rooms = data.get('rooms', [
+        {'id': f'T{i}', 'name': f'Theory Room {i}', 'room_type': 'theory', 'capacity': 50} 
+        for i in range(1, 11)
+    ] + [{'id': 'P1', 'name': 'Practical Room', 'room_type': 'practical', 'capacity': 50}])
     groups = data['student_groups']
     subjects = data['subjects']
     
@@ -286,7 +313,11 @@ def plot_scheduling_constraints(data):
     """Plot scheduling constraints and capacity analysis"""
     config = data['configuration']
     subjects = data['subjects']
-    rooms = data['rooms']
+    # Rooms are auto-generated now, create dummy data for visualization
+    rooms = data.get('rooms', [
+        {'id': f'T{i}', 'name': f'Theory Room {i}', 'room_type': 'theory', 'capacity': 50} 
+        for i in range(1, 11)
+    ] + [{'id': 'P1', 'name': 'Practical Room', 'room_type': 'practical', 'capacity': 50}])
     groups = data['student_groups']
     
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
@@ -418,6 +449,87 @@ def plot_scheduling_constraints(data):
     return fig
 
 
+def plot_lecturer_calendar(lecturer, data):
+    """Create a detailed calendar view for a single lecturer's availability"""
+    availability_list = get_availability_as_list(lecturer['availability'])
+    
+    if not availability_list:
+        return None
+    
+    weeks = data['configuration']['weeks']
+    days = 5  # Mon-Fri
+    
+    # Create figure - double the width for morning/afternoon split
+    fig, ax = plt.subplots(figsize=(16, max(8, weeks * 0.6)))
+    fig.suptitle(f"Availability Calendar: {lecturer['name']} (Priority {lecturer['priority']})", 
+                 fontsize=14, fontweight='bold')
+    
+    # Create availability matrix for morning and afternoon separately
+    # Matrix will be weeks x (days*2) where each day has 2 columns: morning, afternoon
+    avail_matrix = np.zeros((weeks, days * 2))
+    
+    for week, day, timeslot in availability_list:
+        if week < weeks and 1 <= day <= 5:
+            col_index = (day - 1) * 2  # 0, 2, 4, 6, 8 for Mon-Fri
+            if timeslot == 'morning':
+                avail_matrix[week, col_index] = 1
+            else:  # afternoon
+                avail_matrix[week, col_index + 1] = 1
+    
+    # Create heatmap
+    cmap = matplotlib.colors.ListedColormap(['white', '#2ecc71'])
+    im = ax.imshow(avail_matrix, cmap=cmap, aspect='auto', vmin=0, vmax=1)
+    
+    # Set x-axis ticks and labels for each day (centered between morning/afternoon)
+    day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    ax.set_xticks([i * 2 + 0.5 for i in range(days)])
+    ax.set_xticklabels(day_names)
+    
+    # Add minor ticks for morning/afternoon columns
+    ax.set_xticks(range(days * 2), minor=True)
+    minor_labels = ['M', 'A'] * days
+    ax.set_xticklabels(minor_labels, minor=True, fontsize=8)
+    
+    # Set y-axis ticks and labels
+    ax.set_yticks(range(weeks))
+    ax.set_yticklabels([f'Week {i+1}' for i in range(weeks)])
+    
+    # Grid - vertical lines between days and between morning/afternoon
+    for i in range(days + 1):
+        ax.axvline(x=i * 2 - 0.5, color='gray', linewidth=1.5)
+    for i in range(days):
+        ax.axvline(x=i * 2 + 0.5, color='lightgray', linewidth=0.5, linestyle='--')
+    
+    # Horizontal grid
+    ax.set_yticks(np.arange(weeks) - 0.5, minor=True)
+    ax.grid(which="minor", axis='y', color="gray", linestyle='-', linewidth=0.5)
+    
+    # Rotate major x labels
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    
+    # Add legend
+    available_patch = mpatches.Patch(color='#2ecc71', label='Available')
+    unavailable_patch = mpatches.Patch(color='white', label='Unavailable')
+    ax.legend(handles=[available_patch, unavailable_patch], loc='upper left', bbox_to_anchor=(1.02, 1))
+    
+    # Add text annotations showing slot counts
+    total_slots = len(availability_list)
+    morning_count = sum(1 for _, _, t in availability_list if t == 'morning')
+    afternoon_count = sum(1 for _, _, t in availability_list if t == 'afternoon')
+    
+    info_text = f"""Subject: {lecturer['subject_id']}
+Total Available Slots: {total_slots}
+Morning slots: {morning_count}
+Afternoon slots: {afternoon_count}"""
+    
+    ax.text(1.02, 0.5, info_text, transform=ax.transAxes,
+           fontfamily='monospace', fontsize=10, verticalalignment='center',
+           bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
+    plt.tight_layout()
+    return fig
+
+
 def main():
     """Main function to generate all visualizations"""
     print("Loading input data...")
@@ -448,6 +560,26 @@ def main():
     fig4.savefig(os.path.join(output_dir, 'viz_scheduling_constraints.png'), dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
     print("✓ Scheduling constraints saved to:", os.path.join(output_dir, 'viz_scheduling_constraints.png'))
     plt.close(fig4)
+    
+    # Generate individual lecturer calendars for those with availability
+    print("\nGenerating lecturer availability calendars...")
+    lecturer_count = 0
+    for lecturer in data['lecturers']:
+        avail_list = get_availability_as_list(lecturer['availability'])
+        if avail_list:
+            fig = plot_lecturer_calendar(lecturer, data)
+            if fig:
+                # Sanitize filename
+                safe_name = lecturer['name'].replace(' ', '_').replace('.', '')
+                filename = f"lecturer_calendar_{lecturer['id']}_{safe_name}.png"
+                filepath = os.path.join(output_dir, filename)
+                fig.savefig(filepath, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
+                print(f"✓ Lecturer calendar saved: {filename}")
+                plt.close(fig)
+                lecturer_count += 1
+    
+    if lecturer_count > 0:
+        print(f"✓ Generated {lecturer_count} lecturer calendar(s)")
     
     print("\n" + "="*60)
     print("All visualizations generated successfully!")

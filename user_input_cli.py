@@ -325,7 +325,7 @@ def delete_group(data: Dict[str, Any]):
 
 def lecturers_menu(data: Dict[str, Any]):
     while True:
-        ch = list_menu(["Add lecturer", "Edit lecturer", "Delete lecturer", "List lecturers", "Build availability (patterns)", "Convert availability format"], "Lecturers")
+        ch = list_menu(["Add lecturer", "Edit lecturer", "Delete lecturer", "List lecturers"], "Lecturers")
         if ch == 0:
             return
         if ch == 1:
@@ -338,10 +338,6 @@ def lecturers_menu(data: Dict[str, Any]):
             for l in data["lecturers"]:
                 summary = summarize_availability(l.get('availability'))
                 print(f"  - {l['id']}: {l['name']} subj={l['subject_id']} priority={l['priority']} {summary}")
-        elif ch == 5:
-            pattern_builder_global(data)
-        elif ch == 6:
-            convert_availability_global(data)
 
 
 def add_lecturer(data: Dict[str, Any]):

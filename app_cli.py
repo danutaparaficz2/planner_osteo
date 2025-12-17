@@ -13,14 +13,28 @@ import sys
 
 
 def _set_working_dir_for_bundle():
+    """Set working directory and ensure module path is correct for both frozen and normal execution."""
     try:
         if getattr(sys, 'frozen', False):
+            # PyInstaller extracts to sys._MEIPASS
+            if hasattr(sys, '_MEIPASS'):
+                # Add the extracted location to sys.path FIRST for module imports
+                meipass = sys._MEIPASS
+                if meipass not in sys.path:
+                    sys.path.insert(0, meipass)
+                # Also check if .py files are in current dir next to exe
+                exe_dir = os.path.dirname(sys.executable)
+                if exe_dir not in sys.path:
+                    sys.path.insert(0, exe_dir)
+            # Set working directory to where the executable is
             base_dir = os.path.dirname(sys.executable)
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
+            if base_dir not in sys.path:
+                sys.path.insert(0, base_dir)
         os.chdir(base_dir)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: Could not set working directory: {e}")
 
 
 _set_working_dir_for_bundle()
@@ -34,31 +48,43 @@ def _press_enter():
 
 
 def _run_wizard():
-    import user_input_cli as wiz
-    wiz.main_menu()
+    try:
+        import user_input_cli
+        user_input_cli.main_menu()
+    except ImportError as e:
+        print(f"\nError importing wizard: {e}")
+        print("Make sure user_input_cli.py is in the same directory.")
 
 
 def _run_validation():
-    from validate_input import load_json, validate_data, print_report
-    data = load_json("input_data.json")
-    ok, report = validate_data(data)
-    print_report(ok, report)
-    return ok
+    try:
+        import validate_input
+        data = validate_input.load_json("input_data.json")
+        ok, report = validate_input.validate_data(data)
+        validate_input.print_report(ok, report)
+        return ok
+    except ImportError as e:
+        print(f"\nError importing validation: {e}")
+        return False
 
 
 def _run_scheduler():
-    import main as scheduler_main
     try:
-        rc = scheduler_main.main()
+        import main
+        rc = main.main()
         print(f"\nScheduler finished with exit code {rc}.")
+    except ImportError as e:
+        print(f"\nError importing scheduler: {e}")
     except Exception as e:
         print("\nScheduler failed:", e)
 
 
 def _viz_input():
     try:
-        import visualize_input_data as vid
-        vid.main()
+        import visualize_input_data
+        visualize_input_data.main()
+    except ImportError as e:
+        print(f"\nError importing input visualization: {e}")
     except Exception as e:
         print("\nInput visualization failed:", e)
         print("Tip: Ensure matplotlib/numpy are available if running outside the bundled app.")
@@ -66,8 +92,10 @@ def _viz_input():
 
 def _viz_schedule():
     try:
-        import visualize_schedule as vs
-        vs.main()
+        import visualize_schedule
+        visualize_schedule.main()
+    except ImportError as e:
+        print(f"\nError importing schedule visualization: {e}")
     except Exception as e:
         print("\nSchedule visualization failed:", e)
         print("Tip: Ensure matplotlib/numpy are available if running outside the bundled app.")

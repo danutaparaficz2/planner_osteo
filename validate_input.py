@@ -76,18 +76,32 @@ def validate_data(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
         prio = l.get("priority")
         if not isinstance(prio, int) or prio <= 0:
             errors.append(f"Lecturer {lid} priority must be positive int")
-        # availability
-        for idx, slot in enumerate(l.get("availability", [])):
-            if not (isinstance(slot, list) and len(slot) == 3):
-                errors.append(f"Lecturer {lid} availability[{idx}] must be [week, day, timeslot]")
-                continue
-            w, d, t = slot
-            if not isinstance(w, int) or w < 0:
-                errors.append(f"Lecturer {lid} availability[{idx}] invalid week: {w}")
-            if not isinstance(d, int) or d < 1:
-                errors.append(f"Lecturer {lid} availability[{idx}] invalid day: {d}")
-            if t not in ALLOWED_TIMESLOTS:
-                errors.append(f"Lecturer {lid} availability[{idx}] invalid timeslot: {t}")
+        # availability - can be list format or pattern format
+        avail = l.get("availability", [])
+        if isinstance(avail, list):
+            # Old list format: [[week, day, timeslot], ...]
+            for idx, slot in enumerate(avail):
+                if not (isinstance(slot, list) and len(slot) == 3):
+                    errors.append(f"Lecturer {lid} availability[{idx}] must be [week, day, timeslot]")
+                    continue
+                w, d, t = slot
+                if not isinstance(w, int) or w < 0:
+                    errors.append(f"Lecturer {lid} availability[{idx}] invalid week: {w}")
+                if not isinstance(d, int) or d < 1:
+                    errors.append(f"Lecturer {lid} availability[{idx}] invalid day: {d}")
+                if t not in ALLOWED_TIMESLOTS:
+                    errors.append(f"Lecturer {lid} availability[{idx}] invalid timeslot: {t}")
+        elif isinstance(avail, dict):
+            # New pattern format: {patterns: [...], exceptions: [...], blackouts: [...]}
+            # Validate pattern structure
+            if "patterns" in avail and not isinstance(avail["patterns"], list):
+                errors.append(f"Lecturer {lid} availability.patterns must be a list")
+            if "exceptions" in avail and not isinstance(avail["exceptions"], list):
+                errors.append(f"Lecturer {lid} availability.exceptions must be a list")
+            if "blackouts" in avail and not isinstance(avail["blackouts"], list):
+                errors.append(f"Lecturer {lid} availability.blackouts must be a list")
+        else:
+            errors.append(f"Lecturer {lid} availability must be list or dict")
 
     # Configuration
     cfg = data["configuration"]
@@ -105,19 +119,22 @@ def validate_data(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     if not isinstance(tsl, list) or any(t not in ALLOWED_TIMESLOTS for t in tsl):
         errors.append("configuration.timeslots must be list of allowed timeslots")
 
-    # Check that availabilities are within week/day bounds
+    # Check that availabilities are within week/day bounds (only for list format)
     if errors:
         ok = False
     else:
         ok = True
         for l in data["lecturers"]:
-            for idx, (w, d, t) in enumerate(l.get("availability", [])):
-                if w >= weeks:
-                    errors.append(f"Lecturer {l['id']} availability[{idx}] week {w} >= configured weeks {weeks}")
-                    ok = False
-                if d < 1 or d > days:
-                    errors.append(f"Lecturer {l['id']} availability[{idx}] day {d} out of 1..{days}")
-                    ok = False
+            avail = l.get("availability", [])
+            # Only validate bounds for list format (pattern format is validated during expansion)
+            if isinstance(avail, list):
+                for idx, (w, d, t) in enumerate(avail):
+                    if w >= weeks:
+                        errors.append(f"Lecturer {l['id']} availability[{idx}] week {w} >= configured weeks {weeks}")
+                        ok = False
+                    if d < 1 or d > days:
+                        errors.append(f"Lecturer {l['id']} availability[{idx}] day {d} out of 1..{days}")
+                        ok = False
 
     return ok, errors
 

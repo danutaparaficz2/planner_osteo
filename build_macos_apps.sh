@@ -1,6 +1,6 @@
-#!/usr/bin/env zsh
-set -euo pipefail
-cd "${0:A:h}"
+#!/usr/bin/env bash
+set -eo pipefail
+cd "$(dirname "$0")"
 
 APPENV=.venv-app
 if [ ! -d "$APPENV" ]; then
@@ -22,6 +22,9 @@ pyinstaller \
   --clean --noconfirm \
   --onefile \
   --name PlannerInputWizard \
+  --hidden-import=validate_input \
+  --hidden-import=data_loader \
+  --hidden-import=models \
   user_input_cli.py
 
 echo "\nBuilding PlannerAllInOne.app/.binary"
@@ -29,6 +32,35 @@ pyinstaller \
   --clean --noconfirm \
   --onefile \
   --name PlannerAllInOne \
+  --add-data "user_input_cli.py:." \
+  --add-data "validate_input.py:." \
+  --add-data "main.py:." \
+  --add-data "visualize_input_data.py:." \
+  --add-data "visualize_schedule.py:." \
+  --add-data "data_loader.py:." \
+  --add-data "models.py:." \
+  --add-data "scheduler.py:." \
+  --hidden-import=user_input_cli \
+  --hidden-import=validate_input \
+  --hidden-import=main \
+  --hidden-import=visualize_input_data \
+  --hidden-import=visualize_schedule \
+  --hidden-import=data_loader \
+  --hidden-import=models \
+  --hidden-import=scheduler \
+  --hidden-import=json \
+  --hidden-import=shutil \
+  --hidden-import=random \
+  --hidden-import=dataclasses \
+  --hidden-import=enum \
+  --hidden-import=collections \
+  --hidden-import=matplotlib \
+  --hidden-import=matplotlib.pyplot \
+  --hidden-import=matplotlib.backends.backend_agg \
+  --hidden-import=matplotlib.patches \
+  --hidden-import=numpy \
+  --collect-all=matplotlib \
+  --collect-all=numpy \
   app_cli.py
 
 echo "\nBuild complete. Artifacts in ./dist"
