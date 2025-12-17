@@ -67,7 +67,7 @@ class InputEditor:
         self.notebook.add(self.lecturers_tab, text="Lecturers")
         self.notebook.add(self.groups_tab, text="Student Groups")
         self.notebook.add(self.config_tab, text="Configuration")
-        self.notebook.add(self.validation_tab, text="Validate/Save")
+        self.notebook.add(self.validation_tab, text="Run & Validate")
 
         self._build_summary_tab()
         self._build_subjects_tab()
