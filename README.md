@@ -1,6 +1,13 @@
 # Osteopathy Education Scheduler
 
 A Python-based scheduler for osteopathy education that manages lecturers, subjects, rooms, and student groups across a semester.
+## Quick Start
+
+### GUI Editor (Recommended)
+```bash
+source .venv-app/bin/activate
+python gui_input_tk.py
+```
 
 Click on /Users/danuta.paraficz/PyProjects/planner_osteo/dist/PlannerAllInOne exec file in your finder, this will open terminal editor
 ## Features
@@ -39,12 +46,7 @@ cd planner_osteo
 python3 main.py
 ```
 
-## Quick Start
 
-### GUI Editor (Recommended)
-```bash
-python3 gui_input_tk.py
-```
 
 Tabbed interface with:
 - **Summary** - Overview of current data
