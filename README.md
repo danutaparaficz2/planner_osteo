@@ -1,7 +1,7 @@
 # Osteopathy Education Scheduler
 
 A Python-based scheduler for osteopathy education that manages lecturers, subjects, rooms, and student groups across a semester.
-
+click on (base) danuta.paraficz@FFHS-Y6F4YKGH7H ~ % /Users/danuta.paraficz/PyProjects/planner_osteo/dist/PlannerAllInOne exec file in your finder, this will open terminal editor
 ## Features
 
 - **Priority-based Scheduling**: Prioritizes the top 5 lecturers and respects their availability calendars
