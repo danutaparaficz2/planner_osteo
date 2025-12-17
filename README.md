@@ -41,7 +41,20 @@ python3 main.py
 
 ## Quick Start
 
-### All-in-One App (Recommended)
+### GUI Editor (Recommended)
+```bash
+python3 gui_input_tk.py
+```
+
+Tabbed interface with:
+- **Summary** - Overview of current data
+- **Subjects** - Add/edit/delete subjects with blocks and room types
+- **Lecturers** - Manage lecturers with availability editor (patterns + raw JSON)
+- **Student Groups** - Assign subjects to groups
+- **Configuration** - Set weeks, days, timeslots
+- **Run & Validate** - Validate data, save, run scheduler, and generate visualizations
+
+### All-in-One CLI App
 ```bash
 python3 app_cli.py
 # or double-click: start_all_in_one.command
@@ -168,11 +181,12 @@ Interactive CLI with toggle interface:
 ```
 planner_osteo/
 ├── README.md                       # This file
-├── PATTERN_AVAILABILITY_GUIDE.md   # NEW: Complete pattern guide
+├── PATTERN_AVAILABILITY_GUIDE.md   # Complete pattern guide
 ├── IMPLEMENTATION_SUMMARY.md       # Technical documentation
 ├── main.py                         # Scheduler entry point
-├── app_cli.py                      # All-in-one menu app
-├── user_input_cli.py              # Interactive wizard with pattern builder
+├── gui_input_tk.py                 # NEW: Tkinter GUI editor
+├── app_cli.py                      # All-in-one CLI menu app
+├── user_input_cli.py              # Interactive CLI wizard with pattern builder
 ├── models.py                       # Data models
 ├── scheduler.py                    # Scheduling algorithm
 ├── data_loader.py                  # JSON loader with pattern expansion
