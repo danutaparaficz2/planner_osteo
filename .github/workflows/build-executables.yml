@@ -1,0 +1,101 @@
+name: Build Executables
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -r requirements.txt
+    
+    - name: Build Windows executable
+      run: |
+        pyinstaller --clean --noconfirm --onefile --windowed --name PlannerGUI --add-data "image.jpeg;." --hidden-import=validate_input --hidden-import=data_loader --hidden-import=models --hidden-import=scheduler --hidden-import=visualize_schedule --hidden-import=swiss_holidays --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk --collect-all=matplotlib --collect-all=numpy --collect-all=PIL gui_input_tk.py
+    
+    - name: Create Windows distribution package
+      run: |
+        mkdir WindowsPlanner
+        copy dist\PlannerGUI.exe WindowsPlanner\
+        copy input_data.json WindowsPlanner\
+        copy image.jpeg WindowsPlanner\
+        echo OSTEOPATHY EDUCATION PLANNER - Windows Version > WindowsPlanner\README.txt
+        echo ============================================== >> WindowsPlanner\README.txt
+        echo. >> WindowsPlanner\README.txt
+        echo QUICK START: >> WindowsPlanner\README.txt
+        echo 1. Double-click PlannerGUI.exe to launch >> WindowsPlanner\README.txt
+        echo 2. If Windows shows a security warning, click More info then Run anyway >> WindowsPlanner\README.txt
+        echo 3. Edit your data in the GUI tabs >> WindowsPlanner\README.txt
+        echo 4. Click Run Scheduler to generate schedules >> WindowsPlanner\README.txt
+        echo 5. Results appear in images\schedule folder >> WindowsPlanner\README.txt
+    
+    - name: Upload Windows executable
+      uses: actions/upload-artifact@v3
+      with:
+        name: WindowsPlanner
+        path: WindowsPlanner/
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -r requirements.txt
+    
+    - name: Build macOS executable
+      run: |
+        pyinstaller --clean --noconfirm --onefile --windowed --name PlannerGUI --add-data "image.jpeg:." --hidden-import=validate_input --hidden-import=data_loader --hidden-import=models --hidden-import=scheduler --hidden-import=visualize_schedule --hidden-import=swiss_holidays --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk --collect-all=matplotlib --collect-all=numpy --collect-all=PIL gui_input_tk.py
+    
+    - name: Create macOS distribution package
+      run: |
+        mkdir MacPlanner
+        cp dist/PlannerGUI MacPlanner/
+        cp input_data.json MacPlanner/
+        cp image.jpeg MacPlanner/
+        cat > MacPlanner/README.txt << 'EOF'
+        OSTEOPATHY EDUCATION PLANNER - Mac Version
+        ==========================================
+        
+        QUICK START:
+        1. Right-click PlannerGUI and select "Open"
+        2. Click "Open" in the security dialog (first time only)
+        3. Edit your data in the GUI tabs
+        4. Click "Run Scheduler" to generate schedules
+        5. Results appear in images/schedule folder
+        
+        Note: macOS will show a security warning on first launch.
+        This is normal for unsigned applications.
+        EOF
+        chmod +x MacPlanner/PlannerGUI
+    
+    - name: Upload macOS executable
+      uses: actions/upload-artifact@v3
+      with:
+        name: MacPlanner
+        path: MacPlanner/
