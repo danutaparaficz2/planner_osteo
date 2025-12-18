@@ -27,7 +27,7 @@ jobs:
     
     - name: Build Windows executable
       run: |
-        pyinstaller --clean --noconfirm --onefile --windowed --name PlannerGUI --add-data "image.jpeg;." --hidden-import=validate_input --hidden-import=data_loader --hidden-import=models --hidden-import=scheduler --hidden-import=visualize_schedule --hidden-import=swiss_holidays --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk --collect-all=matplotlib --collect-all=numpy --collect-all=PIL gui_input_tk.py
+        pyinstaller --clean --noconfirm --onefile --windowed --name PlannerGUI --add-data "image.jpeg;." --add-data "swiss_holidays.py;." --hidden-import=validate_input --hidden-import=data_loader --hidden-import=models --hidden-import=scheduler --hidden-import=visualize_schedule --hidden-import=swiss_holidays --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk --hidden-import=tkinter --hidden-import=tkinter.ttk --hidden-import=tkinter.filedialog --hidden-import=tkinter.messagebox --collect-all=matplotlib --collect-all=numpy --collect-all=PIL gui_input_tk.py
     
     - name: Create Windows distribution package
       run: |
@@ -70,7 +70,7 @@ jobs:
     
     - name: Build macOS executable
       run: |
-        pyinstaller --clean --noconfirm --onefile --windowed --name PlannerGUI --add-data "image.jpeg:." --hidden-import=validate_input --hidden-import=data_loader --hidden-import=models --hidden-import=scheduler --hidden-import=visualize_schedule --hidden-import=swiss_holidays --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk --collect-all=matplotlib --collect-all=numpy --collect-all=PIL gui_input_tk.py
+        pyinstaller --clean --noconfirm --onefile --windowed --name PlannerGUI --add-data "image.jpeg:." --add-data "swiss_holidays.py:." --hidden-import=validate_input --hidden-import=data_loader --hidden-import=models --hidden-import=scheduler --hidden-import=visualize_schedule --hidden-import=swiss_holidays --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk --hidden-import=tkinter --hidden-import=tkinter.ttk --hidden-import=tkinter.filedialog --hidden-import=tkinter.messagebox --collect-all=matplotlib --collect-all=numpy --collect-all=PIL gui_input_tk.py
     
     - name: Create macOS distribution package
       run: |
