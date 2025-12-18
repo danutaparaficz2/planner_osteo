@@ -14,6 +14,7 @@ import sys
 import random
 from data_loader import load_from_json, print_data_summary
 from scheduler import OsteopathyScheduler
+from visualize_schedule import parse_schedule_output, create_weekly_overview, create_room_calendar, create_utilization_heatmap, create_group_calendar
 
 
 def main():
@@ -28,8 +29,9 @@ def main():
     
     # Load data from JSON file
     print("Loading data from input_data.json...")
-    lecturers, subjects, rooms, student_groups, semester_weeks = load_from_json('input_data.json')
+    lecturers, subjects, rooms, student_groups, semester_weeks, year, canton = load_from_json('input_data.json')
     print_data_summary(lecturers, subjects, rooms, student_groups)
+    print(f"Year: {year}, Canton: {canton.upper()}")
     print()
     
     # Create scheduler
@@ -39,7 +41,9 @@ def main():
         subjects=subjects,
         rooms=rooms,
         student_groups=student_groups,
-        semester_weeks=semester_weeks
+        semester_weeks=semester_weeks,
+        year=year,
+        canton=canton
     )
     print()
     
@@ -62,6 +66,17 @@ def main():
     print(f"Total blocks scheduled: {len(schedule.blocks)}")
     print("Detailed schedule saved to: schedule_output.txt")
     print("=" * 80)
+    print()
+    
+    # Generate visualizations
+    print("Generating schedule visualizations...")
+    schedule_blocks = parse_schedule_output('schedule_output.txt')
+    create_weekly_overview(schedule_blocks, weeks_to_show=semester_weeks)
+    create_room_calendar(schedule_blocks, weeks=semester_weeks)
+    create_group_calendar(schedule_blocks, weeks=semester_weeks)
+    create_utilization_heatmap(schedule_blocks, weeks=semester_weeks)
+    print("Visualizations saved to: images/schedule/")
+    print()
     
     return 0
 

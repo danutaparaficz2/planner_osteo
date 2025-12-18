@@ -7,6 +7,8 @@ from models import (
     ScheduledBlock, TimeSlot, RoomType
 )
 import random
+from datetime import date
+from swiss_holidays import is_holiday
 
 
 class OsteopathyScheduler:
@@ -20,12 +22,16 @@ class OsteopathyScheduler:
                  subjects: List[Subject],
                  rooms: List[Room],
                  student_groups: List[StudentGroup],
-                 semester_weeks: int = 15):
+                 semester_weeks: int = 15,
+                 year: int = 2025,
+                 canton: str = "valais"):
         self.lecturers = {l.id: l for l in lecturers}
         self.subjects = {s.id: s for s in subjects}
         self.rooms = {r.id: r for r in rooms}
         self.student_groups = {g.id: g for g in student_groups}
         self.semester_weeks = semester_weeks
+        self.year = year
+        self.canton = canton
         self.schedule = Schedule(weeks=semester_weeks)
         
         # Organize lecturers by priority
@@ -143,10 +149,22 @@ class OsteopathyScheduler:
                     if self._try_schedule_block(lecturer, subject, group, week, day, timeslot):
                         scheduled += 1
     
+    def _is_holiday_date(self, week: int, day: int) -> bool:
+        """Check if the given ISO week/day falls on a holiday"""
+        try:
+            dt = date.fromisocalendar(self.year, week, day)
+            return is_holiday(self.canton, self.year, dt.month, dt.day)
+        except Exception:
+            return False
+    
     def _try_schedule_block(self, lecturer: Lecturer, subject: Subject, 
                            group: StudentGroup, week: int, day: int, 
                            timeslot: TimeSlot) -> bool:
         """Try to schedule a single block at the specified time"""
+        # Never schedule on holidays
+        if self._is_holiday_date(week, day):
+            return False
+        
         # Check lecturer availability for priority lecturers
         if lecturer.priority <= 5:
             if not lecturer.is_available(week, day, timeslot):

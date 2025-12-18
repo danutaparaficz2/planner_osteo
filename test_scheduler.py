@@ -50,7 +50,9 @@ def test_priority_lecturers():
         subjects=subjects,
         rooms=rooms,
         student_groups=student_groups,
-        semester_weeks=15
+        semester_weeks=15,
+        year=2025,
+        canton="valais"
     )
     
     schedule = scheduler.create_schedule()
@@ -79,7 +81,9 @@ def test_practical_subjects():
         subjects=subjects,
         rooms=rooms,
         student_groups=student_groups,
-        semester_weeks=15
+        semester_weeks=15,
+        year=2025,
+        canton="valais"
     )
     
     schedule = scheduler.create_schedule()
@@ -117,7 +121,9 @@ def test_spread_subjects():
         subjects=subjects,
         rooms=rooms,
         student_groups=student_groups,
-        semester_weeks=15
+        semester_weeks=15,
+        year=2025,
+        canton="valais"
     )
     
     schedule = scheduler.create_schedule()
@@ -153,7 +159,9 @@ def test_no_conflicts():
         subjects=subjects,
         rooms=rooms,
         student_groups=student_groups,
-        semester_weeks=15
+        semester_weeks=15,
+        year=2025,
+        canton="valais"
     )
     
     schedule = scheduler.create_schedule()
@@ -191,7 +199,9 @@ def test_theory_rooms():
         subjects=subjects,
         rooms=rooms,
         student_groups=student_groups,
-        semester_weeks=15
+        semester_weeks=15,
+        year=2025,
+        canton="valais"
     )
     
     schedule = scheduler.create_schedule()

@@ -175,7 +175,7 @@ def _expand_availability(raw_availability, semester_weeks: int) -> Set[tuple]:
     return availability
 
 
-def load_from_json(filename: str = 'input_data.json') -> Tuple[List[Lecturer], List[Subject], List[Room], List[StudentGroup], int]:
+def load_from_json(filename: str = 'input_data.json') -> Tuple[List[Lecturer], List[Subject], List[Room], List[StudentGroup], int, int, str]:
     """
     Load all scheduling data from JSON file.
     
@@ -183,7 +183,7 @@ def load_from_json(filename: str = 'input_data.json') -> Tuple[List[Lecturer], L
         filename: Path to the JSON input file
         
     Returns:
-        Tuple of (lecturers, subjects, rooms, student_groups, semester_weeks)
+        Tuple of (lecturers, subjects, rooms, student_groups, semester_weeks, year, canton)
     """
     with open(filename, 'r') as f:
         data = json.load(f)
@@ -244,8 +244,10 @@ def load_from_json(filename: str = 'input_data.json') -> Tuple[List[Lecturer], L
     
     # Get configuration
     semester_weeks = data['configuration']['weeks']
+    year = data['configuration'].get('year', 2025)
+    canton = data['configuration'].get('canton', 'valais')
     
-    return lecturers, subjects, rooms, student_groups, semester_weeks
+    return lecturers, subjects, rooms, student_groups, semester_weeks, year, canton
 
 
 def print_data_summary(lecturers: List[Lecturer], subjects: List[Subject], 

@@ -12,11 +12,11 @@
       "name": "Physiology",
       "blocks_required": 15,
       "room_type": "theory",
-      "spread": true
+      "spread": false
     },
     {
       "id": "S3",
-      "name": "Pathology",
+      "name": "Patholog",
       "blocks_required": 18,
       "room_type": "theory",
       "spread": true
@@ -34,13 +34,6 @@
       "blocks_required": 14,
       "room_type": "theory",
       "spread": true
-    },
-    {
-      "id": "S6",
-      "name": "Pharmacology",
-      "blocks_required": 10,
-      "room_type": "theory",
-      "spread": false
     },
     {
       "id": "S7",
@@ -66,7 +59,7 @@
     {
       "id": "S10",
       "name": "Research Methods",
-      "blocks_required": 8,
+      "blocks_required": 9,
       "room_type": "theory",
       "spread": false
     },
@@ -103,6 +96,13 @@
       "name": "Practical D - Treatment",
       "blocks_required": 10,
       "room_type": "practical",
+      "spread": true
+    },
+    {
+      "id": "S6",
+      "name": "fsf",
+      "blocks_required": 3,
+      "room_type": "theory",
       "spread": false
     }
   ],
@@ -112,196 +112,81 @@
       "name": "Dr. Smith",
       "subject_id": "S1",
       "priority": 1,
-      "availability": [
-        [
-          0,
-          1,
-          "morning"
+      "availability": {
+        "patterns": [],
+        "exceptions": [
+          {
+            "week": 3,
+            "day": "Tue",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          },
+          {
+            "week": 3,
+            "day": "Thu",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          },
+          {
+            "week": 3,
+            "day": "Fri",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          },
+          {
+            "week": 3,
+            "day": "Mon",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          },
+          {
+            "week": 3,
+            "day": "Wed",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          }
         ],
-        [
-          0,
-          1,
-          "afternoon"
-        ],
-        [
-          0,
-          2,
-          "morning"
-        ],
-        [
-          0,
-          3,
-          "afternoon"
-        ],
-        [
-          0,
-          4,
-          "morning"
-        ],
-        [
-          0,
-          5,
-          "afternoon"
-        ],
-        [
-          1,
-          1,
-          "morning"
-        ],
-        [
-          1,
-          2,
-          "afternoon"
-        ],
-        [
-          1,
-          3,
-          "morning"
-        ],
-        [
-          1,
-          4,
-          "afternoon"
-        ],
-        [
-          2,
-          1,
-          "morning"
-        ],
-        [
-          2,
-          2,
-          "morning"
-        ],
-        [
-          2,
-          3,
-          "afternoon"
-        ],
-        [
-          2,
-          4,
-          "morning"
-        ],
-        [
-          3,
-          1,
-          "afternoon"
-        ],
-        [
-          3,
-          2,
-          "morning"
-        ],
-        [
-          3,
-          3,
-          "afternoon"
-        ],
-        [
-          3,
-          5,
-          "morning"
-        ],
-        [
-          4,
-          1,
-          "morning"
-        ],
-        [
-          4,
-          2,
-          "afternoon"
-        ]
-      ]
+        "blackouts": []
+      }
     },
     {
       "id": "L2",
       "name": "Dr. Johnson",
       "subject_id": "S2",
       "priority": 2,
-      "availability": [
-        [
-          0,
-          1,
-          "afternoon"
+      "availability": {
+        "patterns": [
+          {
+            "weeks": "1-15",
+            "days": {
+              "Mon": [
+                "morning"
+              ],
+              "Tue": [
+                "morning"
+              ],
+              "Wed": [
+                "morning"
+              ],
+              "Fri": [
+                "morning"
+              ]
+            }
+          }
         ],
-        [
-          0,
-          2,
-          "morning"
-        ],
-        [
-          0,
-          3,
-          "morning"
-        ],
-        [
-          0,
-          4,
-          "afternoon"
-        ],
-        [
-          1,
-          1,
-          "afternoon"
-        ],
-        [
-          1,
-          2,
-          "morning"
-        ],
-        [
-          1,
-          3,
-          "afternoon"
-        ],
-        [
-          1,
-          4,
-          "morning"
-        ],
-        [
-          1,
-          5,
-          "afternoon"
-        ],
-        [
-          2,
-          1,
-          "afternoon"
-        ],
-        [
-          2,
-          2,
-          "afternoon"
-        ],
-        [
-          2,
-          3,
-          "morning"
-        ],
-        [
-          3,
-          1,
-          "morning"
-        ],
-        [
-          3,
-          2,
-          "afternoon"
-        ],
-        [
-          3,
-          4,
-          "morning"
-        ],
-        [
-          4,
-          1,
-          "afternoon"
-        ]
-      ]
+        "exceptions": [],
+        "blackouts": []
+      }
     },
     {
       "id": "L3",
@@ -386,156 +271,56 @@
       "name": "Dr. Brown",
       "subject_id": "S4",
       "priority": 4,
-      "availability": [
-        [
-          0,
-          1,
-          "morning"
+      "availability": {
+        "patterns": [
+          {
+            "weeks": "1-15",
+            "days": {
+              "Tue": [
+                "morning"
+              ]
+            }
+          }
         ],
-        [
-          0,
-          2,
-          "afternoon"
+        "exceptions": [
+          {
+            "week": 5,
+            "day": "Tue",
+            "remove": [
+              "morning"
+            ]
+          },
+          {
+            "week": 9,
+            "day": "Tue",
+            "remove": [
+              "morning"
+            ]
+          }
         ],
-        [
-          0,
-          4,
-          "afternoon"
-        ],
-        [
-          1,
-          1,
-          "afternoon"
-        ],
-        [
-          1,
-          2,
-          "morning"
-        ],
-        [
-          1,
-          3,
-          "afternoon"
-        ],
-        [
-          2,
-          1,
-          "afternoon"
-        ],
-        [
-          2,
-          3,
-          "morning"
-        ],
-        [
-          2,
-          5,
-          "morning"
-        ],
-        [
-          3,
-          1,
-          "morning"
-        ],
-        [
-          3,
-          3,
-          "afternoon"
-        ],
-        [
-          4,
-          1,
-          "morning"
-        ]
-      ]
+        "blackouts": []
+      }
     },
     {
       "id": "L5",
       "name": "Dr. Davis",
       "subject_id": "S5",
       "priority": 5,
-      "availability": [
-        [
-          0,
-          1,
-          "afternoon"
+      "availability": {
+        "patterns": [
+          {
+            "weeks": "1-15",
+            "days": {
+              "Wed": [
+                "morning",
+                "afternoon"
+              ]
+            }
+          }
         ],
-        [
-          0,
-          2,
-          "morning"
-        ],
-        [
-          0,
-          3,
-          "afternoon"
-        ],
-        [
-          0,
-          4,
-          "morning"
-        ],
-        [
-          0,
-          5,
-          "afternoon"
-        ],
-        [
-          1,
-          2,
-          "afternoon"
-        ],
-        [
-          1,
-          3,
-          "morning"
-        ],
-        [
-          1,
-          4,
-          "morning"
-        ],
-        [
-          2,
-          1,
-          "morning"
-        ],
-        [
-          2,
-          2,
-          "afternoon"
-        ],
-        [
-          2,
-          3,
-          "afternoon"
-        ],
-        [
-          2,
-          5,
-          "afternoon"
-        ],
-        [
-          3,
-          1,
-          "afternoon"
-        ],
-        [
-          3,
-          4,
-          "afternoon"
-        ],
-        [
-          4,
-          2,
-          "afternoon"
-        ],
-        [
-          4,
-          3,
-          "morning"
-        ]
-      ]
+        "exceptions": [],
+        "blackouts": []
+      }
     },
     {
       "id": "L6",
@@ -546,7 +331,7 @@
     },
     {
       "id": "L7",
-      "name": "Dr. Wilson",
+      "name": "Dr. Wilsons",
       "subject_id": "S7",
       "priority": 7,
       "availability": []
@@ -556,7 +341,23 @@
       "name": "Dr. Moore",
       "subject_id": "S8",
       "priority": 8,
-      "availability": []
+      "availability": {
+        "patterns": [
+          {
+            "weeks": "1-15",
+            "days": {
+              "Mon": [
+                "morning"
+              ],
+              "Wed": [
+                "morning"
+              ]
+            }
+          }
+        ],
+        "exceptions": [],
+        "blackouts": []
+      }
     },
     {
       "id": "L9",
@@ -584,7 +385,46 @@
       "name": "Dr. Jackson",
       "subject_id": "A",
       "priority": 12,
-      "availability": []
+      "availability": {
+        "patterns": [
+          {
+            "weeks": "1-15",
+            "days": {
+              "Tue": [
+                "morning"
+              ],
+              "Thu": [
+                "afternoon"
+              ]
+            }
+          }
+        ],
+        "exceptions": [
+          {
+            "week": 8,
+            "day": "Tue",
+            "remove": [
+              "morning"
+            ]
+          },
+          {
+            "week": 8,
+            "day": "Wed",
+            "remove": [
+              "morning"
+            ]
+          },
+          {
+            "week": 8,
+            "day": "Thu",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          }
+        ],
+        "blackouts": []
+      }
     },
     {
       "id": "L13",
@@ -619,7 +459,11 @@
       "name": "Dr. Garcia",
       "subject_id": "S2",
       "priority": 17,
-      "availability": []
+      "availability": {
+        "patterns": [],
+        "exceptions": [],
+        "blackouts": []
+      }
     },
     {
       "id": "L18",
@@ -640,7 +484,11 @@
       "name": "Dr. Clark",
       "subject_id": "S5",
       "priority": 20,
-      "availability": []
+      "availability": {
+        "patterns": [],
+        "exceptions": [],
+        "blackouts": []
+      }
     }
   ],
   "student_groups": [
@@ -668,7 +516,7 @@
     },
     {
       "id": "G3",
-      "name": "Group 3 - Year 3",
+      "name": "Group 3 - Year 33",
       "subject_ids": [
         "S5",
         "S8",
@@ -701,11 +549,13 @@
   ],
   "configuration": {
     "weeks": 15,
-    "days_per_week": 5,
+    "days_per_week": 6,
     "timeslots_per_day": 2,
     "timeslots": [
       "morning",
       "afternoon"
-    ]
+    ],
+    "year": 2026,
+    "canton": "valais"
   }
 }

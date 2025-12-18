@@ -43,7 +43,9 @@ def main():
         subjects=subjects,
         rooms=rooms,
         student_groups=student_groups,
-        semester_weeks=15
+        semester_weeks=15,
+        year=2025,
+        canton="valais"
     )
     
     print("🚀 CREATING SCHEDULE...")
