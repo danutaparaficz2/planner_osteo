@@ -50,6 +50,8 @@ DAY_NAME_TO_INT = {
     'Wed': 3, 'Wednesday': 3,
     'Thu': 4, 'Thursday': 4,
     'Fri': 5, 'Friday': 5,
+    'Sat': 6, 'Saturday': 6,
+    'Sun': 7, 'Sunday': 7,
 }
 
 
@@ -99,12 +101,24 @@ def _expand_availability(raw_availability, semester_weeks: int) -> Set[tuple]:
             if not isinstance(item, (list, tuple)) or len(item) != 3:
                 continue
             week, day, slot = item
-            if not isinstance(week, int) or not isinstance(day, int):
+            # Normalize week
+            if not isinstance(week, int):
                 continue
-            if week < 1 or week > semester_weeks or day < 1 or day > 5:
+            # Normalize day: accept int 1..7 or string day name/code
+            day_int = None
+            if isinstance(day, int):
+                day_int = day
+            elif isinstance(day, str):
+                day_int = DAY_NAME_TO_INT.get(day, None)
+                if day_int is None:
+                    # Try first 3 letters capitalized (Mon, Tue...)
+                    day_int = DAY_NAME_TO_INT.get(day[:3].capitalize(), None)
+            if day_int is None:
+                continue
+            if week < 1 or week > semester_weeks or day_int < 1 or day_int > 7:
                 continue
             timeslot_enum = TimeSlot.MORNING if slot == 'morning' else TimeSlot.AFTERNOON
-            availability.add((week, day, timeslot_enum))
+            availability.add((week, day_int, timeslot_enum))
         return availability
 
     # New format: dict with patterns / exceptions / blackouts

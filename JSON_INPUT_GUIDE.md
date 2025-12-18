@@ -22,17 +22,17 @@ The scheduler now uses `input_data.json` as the sole data source. This file cont
   "name": "Dr. Smith",
   "subject_id": "S1",
   "priority": 1,          // 1-5 are top priority
-  "availability": [       // [week, day, timeslot] where week is 0-based
-    [0, 1, "morning"],    // Week 0 (1st week), Monday, Morning
-    [0, 1, "afternoon"],
-    [1, 2, "morning"]     // Week 1 (2nd week), Tuesday, Morning
+  "availability": [       // [week, day, timeslot] where week is 1-based
+    [1, "Monday", "morning"],     // Week 1, Monday, Morning
+    [1, "Monday", "afternoon"],
+    [2, "Tuesday", "morning"]
   ]
 }
 ```
 - **Priority 1-5**: Top priority lecturers - scheduler uses their availability calendar
 - **Priority 6+**: Lower priority lecturers - assumed always available (empty availability array)
-- **Week**: 0-based (0 = week 1, 1 = week 2, etc.)
-- **Day**: 1-5 (Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5)
+- **Week**: 1-based (1 = week 1, 2 = week 2, ...)
+- **Day**: Day name or short code (e.g., "Monday" or "Mon"). Weekends supported if configured.
 - **Timeslot**: "morning" or "afternoon"
 
 ### Rooms
@@ -58,7 +58,7 @@ The scheduler now uses `input_data.json` as the sole data source. This file cont
 ```json
 {
   "weeks": 15,
-  "days_per_week": 5,
+  "scheduled_days": ["Monday", "Tuesday", "Wednesday"],
   "timeslots_per_day": 2,
   "timeslots": ["morning", "afternoon"]
 }
@@ -86,7 +86,7 @@ python user_input_cli.py
 
 What you can do:
 - Add/edit/delete Subjects, Lecturers, Rooms, and Student Groups
-- Edit configuration (weeks, days per week, timeslots per day)
+- Edit configuration (weeks, scheduled days, timeslots per day)
 - For priority lecturers (1-5), add availability slots interactively
 - Validate inputs and save with automatic backup of the previous file
 

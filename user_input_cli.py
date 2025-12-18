@@ -45,7 +45,7 @@ def load_data(path: str = INPUT_FILE) -> Dict[str, Any]:
         "student_groups": [],
         "configuration": {
             "weeks": 15,
-            "days_per_week": 5,
+            "scheduled_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
             "timeslots_per_day": 2,
             "timeslots": TYPESLOTS,
         },
@@ -366,32 +366,50 @@ def add_lecturer(data: Dict[str, Any]):
 
 
 def prompt_availability(data: Dict[str, Any]) -> List[List[Any]]:
-    weeks = data["configuration"]["weeks"]
-    days = data["configuration"]["days_per_week"]
-    print("Enter availability as triples: week(0..), day(1..), timeslot(morning/afternoon). Blank to finish.")
-    avail = []
+    weeks_total = data["configuration"]["weeks"]
+    configured_days = data["configuration"].get("scheduled_days") or [
+        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"
+    ]
+    allowed_codes = _day_short_codes_for_config(data)
+    print("Enter availability as triples: week(1..), day(Mon/Tue/...), timeslot(morning/afternoon). Blank week to finish.")
+    print(f"  Allowed days: {', '.join(allowed_codes)} -> {', '.join(configured_days)}")
+    avail: List[List[Any]] = []
     while True:
-        w = input("  Week (0-based, blank to finish): ").strip()
+        w = input("  Week (1-based, blank to finish): ").strip()
         if w == "":
             break
-        d = input("  Day (1-5): ").strip()
+        d = input("  Day (code or full name): ").strip()
         t = input("  Timeslot (morning/afternoon): ").strip().lower()
         try:
             w_i = int(w)
-            d_i = int(d)
         except ValueError:
-            print("  ✗ Week/Day must be integers")
+            print("  ✗ Week must be an integer (1..)")
             continue
-        if w_i < 0 or w_i >= weeks:
-            print(f"  ✗ Week must be in 0..{weeks-1}")
+        if w_i < 1 or w_i > weeks_total:
+            print(f"  ✗ Week must be in 1..{weeks_total}")
             continue
-        if d_i < 1 or d_i > days:
-            print(f"  ✗ Day must be in 1..{days}")
+        # Normalize day to a configured full name using codes or full names
+        d_norm = d.strip()
+        d_full = None
+        # Try short code match
+        for idx, code in enumerate(allowed_codes):
+            if d_norm.lower().startswith(code.lower()):
+                d_full = configured_days[idx]
+                break
+        # Try exact full name match
+        if not d_full:
+            for name in configured_days:
+                if d_norm.lower() == name.lower():
+                    d_full = name
+                    break
+        if not d_full:
+            print("  ✗ Day must be one of the configured days (e.g., Mon/Tue or full name)")
             continue
         if t not in TYPESLOTS:
             print(f"  ✗ Timeslot must be one of {TYPESLOTS}")
             continue
-        avail.append([w_i, d_i, t])
+        # Store using string day name to support arbitrary configured days (loader will accept this)
+        avail.append([w_i, d_full, t])
     return avail
 
 
@@ -417,7 +435,18 @@ def edit_lecturer(data: Dict[str, Any]):
 
 # ---- Availability Helpers ----
 
-DAY_CODES = ["Mon","Tue","Wed","Thu","Fri"]
+def _day_short_codes_for_config(data: Dict[str, Any]) -> List[str]:
+    """Return short day codes (Mon, Tue, ...) based on configured scheduled days.
+    Falls back to Mon-Fri if not set.
+    """
+    mapping = {
+        "Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed",
+        "Thursday": "Thu", "Friday": "Fri", "Saturday": "Sat", "Sunday": "Sun",
+    }
+    days = data.get("configuration", {}).get("scheduled_days") or [
+        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"
+    ]
+    return [mapping.get(d, d[:3]) for d in days]
 
 def summarize_availability(avail) -> str:
     if not avail:
@@ -437,12 +466,13 @@ def pattern_builder_single(data: Dict[str, Any], existing: Dict[str, Any] = None
     if existing:
         print("Existing patterns detected; starting with them.")
     availability = existing.copy() if existing else {"patterns": [], "exceptions": [], "blackouts": []}
+    day_codes = _day_short_codes_for_config(data)
 
     while True:
         print("\nAdd / Edit a Pattern")
         weeks_expr = prompt("Weeks expression (e.g. 1-5,7,10-12)", default=f"1-{weeks_total}")
         # Initialize empty selection grid
-        selection = {d: {"morning": False, "afternoon": False} for d in DAY_CODES}
+        selection = {d: {"morning": False, "afternoon": False} for d in day_codes}
         # Interactive toggling loop
         print("Toggle slots. Commands: 'mon m', 'tue a', 'wed both', 'all', 'done', 'show'.")
         while True:
@@ -453,7 +483,7 @@ def pattern_builder_single(data: Dict[str, Any], existing: Dict[str, Any] = None
                 _print_selection(selection)
                 continue
             if cmd == "all":
-                for d in DAY_CODES:
+                for d in day_codes:
                     selection[d]["morning"] = True
                     selection[d]["afternoon"] = True
                 _print_selection(selection)
@@ -463,7 +493,7 @@ def pattern_builder_single(data: Dict[str, Any], existing: Dict[str, Any] = None
                 continue
             day_part = parts[0]
             slot_part = parts[1] if len(parts) > 1 else None
-            day_match = _match_day(day_part)
+            day_match = _match_day(day_part, day_codes)
             if not day_match:
                 print("  ✗ Unknown day code")
                 continue
@@ -480,7 +510,7 @@ def pattern_builder_single(data: Dict[str, Any], existing: Dict[str, Any] = None
             _print_selection(selection)
         # Build pattern days map
         days_map = {}
-        for d in DAY_CODES:
+        for d in day_codes:
             slots = [s for s, v in selection[d].items() if v]
             if slots:
                 days_map[d] = slots
@@ -493,7 +523,7 @@ def pattern_builder_single(data: Dict[str, Any], existing: Dict[str, Any] = None
     if yes_no("Add exceptions (specific adds/removes)?", default=False):
         while True:
             week = prompt("Exception week", validator=v_int(1, weeks_total))
-            day = prompt("Day (Mon/Tue/...)", validator=v_choice(DAY_CODES))
+            day = prompt("Day (Mon/Tue/...)", validator=v_choice(day_codes))
             action = prompt("Action (remove/add)", validator=v_choice(["remove","add"]))
             slots_raw = prompt("Slots comma list (morning,afternoon)", default="morning")
             slots = [s.strip() for s in slots_raw.split(',') if s.strip() in TYPESLOTS]
@@ -508,7 +538,7 @@ def pattern_builder_single(data: Dict[str, Any], existing: Dict[str, Any] = None
             from_w = prompt("From week", validator=v_int(1, weeks_total))
             to_w = prompt("To week", default=from_w, validator=v_int(1, weeks_total))
             days_raw = prompt("Days comma list (blank=all)", default="")
-            days_list = [d.strip() for d in days_raw.split(',') if d.strip() in DAY_CODES]
+            days_list = [d.strip() for d in days_raw.split(',') if d.strip() in day_codes]
             availability["blackouts"].append({"from_week": from_w, "to_week": to_w, "days": days_list})
             print("  ✓ Blackout added")
             if not yes_no("Add another blackout?", default=False):
@@ -516,16 +546,16 @@ def pattern_builder_single(data: Dict[str, Any], existing: Dict[str, Any] = None
 
     return availability
 
-def _match_day(token: str) -> str:
+def _match_day(token: str, day_codes: List[str]) -> str:
     token = token.lower()
-    for d in DAY_CODES:
+    for d in day_codes:
         if d.lower().startswith(token):
             return d
     return None
 
 def _print_selection(selection: Dict[str, Dict[str,bool]]):
     print("    Day       Morning Afternoon")
-    for d in DAY_CODES:
+    for d in selection.keys():
         m = '✓' if selection[d]['morning'] else '·'
         a = '✓' if selection[d]['afternoon'] else '·'
         print(f"    {d:<3}       {m:^7} {a:^9}")
@@ -560,10 +590,12 @@ def convert_availability_global(data: Dict[str, Any]):
             # Group by day/slot ignoring weeks for a base pattern
             weeks_total = data['configuration']['weeks']
             weeks_expr = f"1-{weeks_total}"
-            day_slot = {d: set() for d in DAY_CODES}
+            day_codes = _day_short_codes_for_config(data)
+            day_slot = {d: set() for d in day_codes}
             for w, d, slot in avail:
-                # d is numeric day (1-5)
-                day_name = DAY_CODES[d - 1] if 1 <= d <= 5 else None
+                # d is numeric day (1-5) in legacy list format. Map to Mon-Fri.
+                legacy_codes = ["Mon","Tue","Wed","Thu","Fri"]
+                day_name = legacy_codes[d - 1] if isinstance(d, int) and 1 <= d <= 5 else None
                 if day_name:
                     day_slot[day_name].add(slot)
             days_map = {d: sorted(slots) for d, slots in day_slot.items() if slots}
@@ -587,7 +619,33 @@ def config_menu(data: Dict[str, Any]):
     cfg = data["configuration"]
     print("\nConfiguration (press Enter to keep current value)")
     cfg["weeks"] = prompt("Weeks (semester length)", default=cfg["weeks"], validator=v_int(1))
-    cfg["days_per_week"] = prompt("Days per week", default=cfg["days_per_week"], validator=v_int(1, 7))
+    # Scheduled days selection
+    all_days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+    default_days = cfg.get("scheduled_days") or ["Monday","Tuesday","Wednesday","Thursday","Friday"]
+    print("Choose scheduled teaching days (comma list of names or codes, e.g., Mon, Tue, Wed).")
+    print("  Available: Mon, Tue, Wed, Thu, Fri, Sat, Sun")
+    current_codes = ", ".join(_day_short_codes_for_config({"configuration": {"scheduled_days": default_days}}))
+    days_raw = input(f"Scheduled days [{current_codes}]: ").strip()
+    if days_raw:
+        tokens = [t.strip() for t in days_raw.split(',') if t.strip()]
+        code_to_full = {"Mon":"Monday","Tue":"Tuesday","Wed":"Wednesday","Thu":"Thursday","Fri":"Friday","Sat":"Saturday","Sun":"Sunday"}
+        selected: List[str] = []
+        for tok in tokens:
+            t = tok.strip()
+            key = t[:3].capitalize()
+            full = code_to_full.get(key)
+            # accept full name as-is
+            if t.capitalize() in all_days:
+                full = t.capitalize()
+            if not full or full not in all_days:
+                print(f"  ✗ Unknown day: {tok}. Skipping.")
+                continue
+            if full not in selected:
+                selected.append(full)
+        if selected:
+            cfg["scheduled_days"] = selected
+    else:
+        cfg["scheduled_days"] = default_days
     cfg["timeslots_per_day"] = prompt("Timeslots per day", default=cfg["timeslots_per_day"], validator=v_int(1))
     # fixed timeslots for now
     print(f"Timeslots supported: {', '.join(TYPESLOTS)}")

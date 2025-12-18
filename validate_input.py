@@ -85,10 +85,11 @@ def validate_data(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
                     errors.append(f"Lecturer {lid} availability[{idx}] must be [week, day, timeslot]")
                     continue
                 w, d, t = slot
-                if not isinstance(w, int) or w < 0:
-                    errors.append(f"Lecturer {lid} availability[{idx}] invalid week: {w}")
-                if not isinstance(d, int) or d < 1:
-                    errors.append(f"Lecturer {lid} availability[{idx}] invalid day: {d}")
+                if not isinstance(w, int) or w < 1:
+                    errors.append(f"Lecturer {lid} availability[{idx}] invalid week (must be >=1): {w}")
+                # day can be int (1..7) or string day name/code (Mon..Sun)
+                if not (isinstance(d, int) or isinstance(d, str)):
+                    errors.append(f"Lecturer {lid} availability[{idx}] invalid day type: {d}")
                 if t not in ALLOWED_TIMESLOTS:
                     errors.append(f"Lecturer {lid} availability[{idx}] invalid timeslot: {t}")
         elif isinstance(avail, dict):
@@ -136,15 +137,27 @@ def validate_data(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
             avail = l.get("availability", [])
             # Only validate bounds for list format (pattern format is validated during expansion)
             if isinstance(avail, list):
-                for idx, (w, d, t) in enumerate(avail):
-                    if w >= weeks:
-                        errors.append(f"Lecturer {l['id']} availability[{idx}] week {w} >= configured weeks {weeks}")
+                for idx, slot in enumerate(avail):
+                    if not (isinstance(slot, list) and len(slot) == 3):
+                        continue
+                    w, d, t = slot
+                    if not isinstance(w, int) or w < 1 or w > weeks:
+                        errors.append(f"Lecturer {l['id']} availability[{idx}] week {w} out of 1..{weeks}")
                         ok = False
-                    # For legacy numeric day format, bound using configured scheduled_days length or default 5
-                    max_days = len(scheduled_days) if isinstance(scheduled_days, list) and scheduled_days else 5
-                    if d < 1 or d > max_days:
-                        errors.append(f"Lecturer {l['id']} availability[{idx}] day {d} out of 1..{max_days}")
-                        ok = False
+                    # For day bounds:
+                    if isinstance(d, int):
+                        # Use configured scheduled_days length or default 5
+                        max_days = len(scheduled_days) if isinstance(scheduled_days, list) and scheduled_days else 5
+                        if d < 1 or d > max_days:
+                            errors.append(f"Lecturer {l['id']} availability[{idx}] day {d} out of 1..{max_days}")
+                            ok = False
+                    elif isinstance(d, str):
+                        allowed_names = set(scheduled_days) if isinstance(scheduled_days, list) and scheduled_days else {"Monday","Tuesday","Wednesday","Thursday","Friday"}
+                        # Accept short codes too (Mon..Sun)
+                        allowed_codes = {"Mon","Tue","Wed","Thu","Fri","Sat","Sun"}
+                        if d not in allowed_names and d[:3].capitalize() not in allowed_codes:
+                            errors.append(f"Lecturer {l['id']} availability[{idx}] day '{d}' not in configured scheduled_days")
+                            ok = False
 
     return ok, errors
 

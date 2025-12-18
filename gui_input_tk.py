@@ -17,6 +17,13 @@ from swiss_holidays import CANTONS, is_holiday
 from validate_input import validate_data
 
 DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+DAY_LONG_TO_SHORT = {
+    "Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed",
+    "Thursday": "Thu", "Friday": "Fri", "Saturday": "Sat", "Sunday": "Sun",
+}
+DAY_SHORT_TO_ISO = {
+    "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6, "Sun": 7,
+}
 DEFAULT_PATH = "input_data.json"
 
 
@@ -345,7 +352,25 @@ class InputEditor:
         self.summary_details.config(state=tk.NORMAL)
         self.summary_details.delete("1.0", tk.END)
         self.summary_details.insert(tk.END, "\n".join(lines))
-        self.summary_details.config(state=tk.DISABLED)
+
+    def _active_days_short(self) -> list[str]:
+        cfg = self.data.get("configuration", {})
+        sched = cfg.get("scheduled_days") or ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        res: list[str] = []
+        for name in sched:
+            short = DAY_LONG_TO_SHORT.get(name)
+            if short in DAY_SHORT_TO_ISO:
+                res.append(short)
+        return res
+
+    def _active_days_iso(self) -> list[int]:
+        return [DAY_SHORT_TO_ISO[s] for s in self._active_days_short()]
+
+    def _iso_to_short(self, iso_day: int) -> str:
+        for short, idx in DAY_SHORT_TO_ISO.items():
+            if idx == iso_day:
+                return short
+        return "Mon"
 
     def _refresh_subjects(self) -> None:
         self.subjects_tree.delete(*self.subjects_tree.get_children())
@@ -724,7 +749,7 @@ class InputEditor:
         ttk.Entry(builder_frame, textvariable=week_expr, width=30).grid(row=0, column=1, sticky="w", padx=6, pady=4)
 
         day_slot_vars: Dict[str, Dict[str, tk.BooleanVar]] = {}
-        for r, day in enumerate(DAY_LABELS, start=1):
+        for r, day in enumerate(self._active_days_short(), start=1):
             ttk.Label(builder_frame, text=day).grid(row=r, column=0, sticky="w", padx=6, pady=2)
             slot_vars: Dict[str, tk.BooleanVar] = {}
             for c, slot in enumerate(cfg_timeslots, start=1):
@@ -747,7 +772,7 @@ class InputEditor:
             result = {"patterns": [{"weeks": week_expr.get().strip(), "days": pattern_days}], "exceptions": [], "blackouts": []}
             win.destroy()
 
-        ttk.Button(builder_frame, text="Apply pattern (saves & closes)", command=apply_quick).grid(row=len(DAY_LABELS) + 1, column=0, columnspan=2, pady=6)
+        ttk.Button(builder_frame, text="Apply pattern (saves & closes)", command=apply_quick).grid(row=len(self._active_days_short()) + 1, column=0, columnspan=2, pady=6)
 
         ttk.Label(win, text="OR manually edit availability JSON below and click 'Use value'").pack(anchor="w", padx=8, pady=(8, 0))
         ttk.Label(win, text="(list or pattern dict format)").pack(anchor="w", padx=8)
@@ -812,7 +837,7 @@ class InputEditor:
 
         ttk.Label(builder, text="Days").grid(row=1, column=0, sticky="w", padx=6)
         day_vars: Dict[str, tk.BooleanVar] = {}
-        for i, day in enumerate(DAY_LABELS):
+        for i, day in enumerate(self._active_days_short()):
             var = tk.BooleanVar(value=False)
             ttk.Checkbutton(builder, text=day, variable=var).grid(row=1, column=1 + i, sticky="w", padx=4)
             day_vars[day] = var
@@ -882,7 +907,7 @@ class InputEditor:
                 messagebox.showerror("Invalid", "Blackouts must be a list of objects")
                 return
             # Basic structural validation and day name check
-            allowed_days = set(DAY_LABELS)
+            allowed_days = set(self._active_days_short())
             for idx, item in enumerate(parsed):
                 if not isinstance(item, dict):
                     messagebox.showerror("Invalid", f"Entry {idx+1} must be an object")
@@ -948,23 +973,30 @@ class InputEditor:
             w = exc.get("week")
             dname = exc.get("day")
             removes = exc.get("remove", []) or []
-            if isinstance(w, int) and dname in DAY_LABELS:
-                d_idx = DAY_LABELS.index(dname) + 1
-                for sl in removes:
-                    if sl in timeslots:
-                        selected.add((w, d_idx, sl))
+            if isinstance(w, int):
+                # Accept short or long names; filter to active days only
+                if isinstance(dname, str):
+                    if dname in DAY_SHORT_TO_ISO:
+                        d_idx = DAY_SHORT_TO_ISO[dname]
+                    else:
+                        d_idx = DAY_SHORT_TO_ISO.get(DAY_LONG_TO_SHORT.get(dname, ""), None)
+                    if d_idx and d_idx in self._active_days_iso():
+                        for sl in removes:
+                            if sl in timeslots:
+                                selected.add((w, d_idx, sl))
         blks = availability.get("blackouts", []) or []
         for blk in blks:
             fw = blk.get("from_week")
             tw = blk.get("to_week")
-            days = blk.get("days", []) or DAY_LABELS
+            days = blk.get("days", []) or self._active_days_short()
             if isinstance(fw, int) and isinstance(tw, int):
                 if fw > tw:
                     fw, tw = tw, fw
                 for w in range(fw, tw + 1):
                     for dname in days:
-                        if dname in DAY_LABELS:
-                            d_idx = DAY_LABELS.index(dname) + 1
+                        # dname expected short label
+                        d_idx = DAY_SHORT_TO_ISO.get(dname, None)
+                        if d_idx and d_idx in self._active_days_iso():
                             for sl in timeslots:
                                 selected.add((w, d_idx, sl))
 
@@ -987,7 +1019,7 @@ class InputEditor:
             action_row.grid(row=0, column=0, columnspan=len(timeslots)+1, sticky="w", pady=(0, 6))
             def make_select_week(_w=w):
                 def select_all():
-                    for d in range(1, 6):
+                    for d in self._active_days_iso():
                         for sl in timeslots:
                             key = (_w, d, sl)
                             selected.add(key)
@@ -996,7 +1028,7 @@ class InputEditor:
                 return select_all
             def make_clear_week(_w=w):
                 def clear_all():
-                    for d in range(1, 6):
+                    for d in self._active_days_iso():
                         for sl in timeslots:
                             key = (_w, d, sl)
                             selected.discard(key)
@@ -1011,7 +1043,8 @@ class InputEditor:
             for i, sl in enumerate(timeslots, start=1):
                 ttk.Label(panel, text=sl.capitalize()).grid(row=1, column=i, padx=4)
             # Days rows (starting row 2)
-            for d_idx, day in enumerate(DAY_LABELS, start=1):
+            for d_idx in self._active_days_iso():
+                day = self._iso_to_short(d_idx)
                 try:
                     dt = date.fromisocalendar(year, w, d_idx)
                     dlabel = f"{day} {dt.strftime('%d %b')}"
@@ -1043,7 +1076,7 @@ class InputEditor:
             
             exceptions = []
             for (w, d), slots in grouped.items():
-                day_name = DAY_LABELS[d - 1]
+                day_name = self._iso_to_short(d)
                 exceptions.append({"week": w, "day": day_name, "remove": sorted(slots)})
             result = {
                 "patterns": availability.get("patterns", []),
@@ -1132,7 +1165,7 @@ class InputEditor:
             expanded = set()
         if (not expanded) and isinstance(lecturer.get("priority"), int) and lecturer.get("priority") > 5:
             for w in range(1, weeks_total + 1):
-                for d in range(1, 6):
+                for d in self._active_days_iso():
                     for sl in timeslots:
                         expanded.add((w, d, sl))
 
@@ -1177,7 +1210,8 @@ class InputEditor:
             ttk.Label(panel, text="").grid(row=0, column=0, padx=4)
             for i, sl in enumerate(timeslots, start=1):
                 ttk.Label(panel, text=sl.capitalize()).grid(row=0, column=i, padx=4)
-            for d_idx, day in enumerate(DAY_LABELS, start=1):
+            for d_idx in self._active_days_iso():
+                day = self._iso_to_short(d_idx)
                 try:
                     dt = date.fromisocalendar(year, w, d_idx)
                     dlabel = f"{day} {dt.strftime('%d %b')}"

@@ -39,6 +39,7 @@ jobs:
         pyinstaller --clean --noconfirm --onefile --console --name PlannerVisualizeInput --hidden-import=matplotlib --collect-all=matplotlib --collect-all=numpy visualize_input_data.py
     
     - name: Create Windows distribution package
+      shell: cmd
       run: |
         mkdir WindowsPlanner
         copy dist\PlannerGUI.exe WindowsPlanner\
