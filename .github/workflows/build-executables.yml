@@ -25,14 +25,26 @@ jobs:
         pip install pyinstaller
         pip install -r requirements.txt
     
-    - name: Build Windows executable
+    - name: Build Windows GUI executable
       run: |
         pyinstaller --clean --noconfirm --onefile --windowed --name PlannerGUI --add-data "image.jpeg;." --add-data "swiss_holidays.py;." --hidden-import=validate_input --hidden-import=data_loader --hidden-import=models --hidden-import=scheduler --hidden-import=visualize_schedule --hidden-import=swiss_holidays --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk --hidden-import=tkinter --hidden-import=tkinter.ttk --hidden-import=tkinter.filedialog --hidden-import=tkinter.messagebox --collect-all=matplotlib --collect-all=numpy --collect-all=PIL gui_input_tk.py
+    
+    - name: Build Windows Scheduler CLI
+      run: |
+        pyinstaller --clean --noconfirm --onefile --console --name PlannerScheduler --add-data "image.jpeg;." --add-data "swiss_holidays.py;." --hidden-import=validate_input --hidden-import=data_loader --hidden-import=models --hidden-import=scheduler --hidden-import=visualize_schedule --hidden-import=swiss_holidays --collect-all=matplotlib --collect-all=numpy main.py
+
+    - name: Build Windows Visualizers (optional)
+      run: |
+        pyinstaller --clean --noconfirm --onefile --console --name PlannerVisualizeSchedule --hidden-import=matplotlib --collect-all=matplotlib --collect-all=numpy visualize_schedule.py
+        pyinstaller --clean --noconfirm --onefile --console --name PlannerVisualizeInput --hidden-import=matplotlib --collect-all=matplotlib --collect-all=numpy visualize_input_data.py
     
     - name: Create Windows distribution package
       run: |
         mkdir WindowsPlanner
         copy dist\PlannerGUI.exe WindowsPlanner\
+        copy dist\PlannerScheduler.exe WindowsPlanner\
+        copy dist\PlannerVisualizeSchedule.exe WindowsPlanner\
+        copy dist\PlannerVisualizeInput.exe WindowsPlanner\
         copy input_data.json WindowsPlanner\
         copy image.jpeg WindowsPlanner\
         echo OSTEOPATHY EDUCATION PLANNER - Windows Version > WindowsPlanner\README.txt
@@ -44,6 +56,11 @@ jobs:
         echo 3. Edit your data in the GUI tabs >> WindowsPlanner\README.txt
         echo 4. Click Run Scheduler to generate schedules >> WindowsPlanner\README.txt
         echo 5. Results appear in images\schedule folder >> WindowsPlanner\README.txt
+        echo. >> WindowsPlanner\README.txt
+        echo Included CLI tools: >> WindowsPlanner\README.txt
+        echo - PlannerScheduler.exe  ^(runs the scheduler without GUI^) >> WindowsPlanner\README.txt
+        echo - PlannerVisualizeSchedule.exe  ^(rebuilds schedule charts^) >> WindowsPlanner\README.txt
+        echo - PlannerVisualizeInput.exe  ^(input data charts^) >> WindowsPlanner\README.txt
     
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4

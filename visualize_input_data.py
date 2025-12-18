@@ -325,7 +325,8 @@ def plot_scheduling_constraints(data):
     
     # 1. Time capacity analysis
     ax = axes[0, 0]
-    total_slots = config['weeks'] * config['days_per_week'] * config['timeslots_per_day']
+    days_count = len(config.get('scheduled_days', ["Monday","Tuesday","Wednesday","Thursday","Friday"]))
+    total_slots = config['weeks'] * days_count * config['timeslots_per_day']
     theory_rooms = len([r for r in rooms if r['room_type'] == 'theory'])
     practical_rooms = len([r for r in rooms if r['room_type'] == 'practical'])
     
@@ -389,7 +390,7 @@ def plot_scheduling_constraints(data):
     ax = axes[1, 0]
     total_blocks = sum(s['blocks_required'] for s in subjects)
     avg_blocks_per_week = total_blocks / config['weeks']
-    slots_per_week = config['days_per_week'] * config['timeslots_per_day']
+    slots_per_week = days_count * config['timeslots_per_day']
     num_groups = len(groups)
     
     # Each group can have 2 slots per day (morning/afternoon)
@@ -417,7 +418,7 @@ def plot_scheduling_constraints(data):
     {'='*40}
     
     Semester Duration: {config['weeks']} weeks
-    Days per Week: {config['days_per_week']} (Mon-Fri)
+    Scheduled Days: {', '.join(config.get('scheduled_days', ['Monday','Tuesday','Wednesday','Thursday','Friday']))}
     Timeslots per Day: {config['timeslots_per_day']} (morning/afternoon)
     
     Total Time Slots: {total_slots}

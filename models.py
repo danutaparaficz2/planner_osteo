@@ -2,8 +2,12 @@
 Data models for the osteopathy education scheduler.
 """
 from dataclasses import dataclass, field
-from typing import List, Set, Optional
+from typing import List, Set, Optional, Any
 from enum import Enum
+
+
+# Day names used in scheduling
+DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
 class TimeSlot(Enum):
@@ -52,9 +56,28 @@ class Lecturer:
     priority: int  # Lower number = higher priority (1-5 are top priority)
     availability: Set[tuple] = field(default_factory=set)  # Set of (week, day, timeslot) tuples
     
-    def is_available(self, week: int, day: int, timeslot: TimeSlot) -> bool:
-        """Check if lecturer is available at given time"""
-        return (week, day, timeslot) in self.availability
+    def is_available(self, week: int, day: Any, timeslot: TimeSlot) -> bool:
+        """Check if lecturer is available at given time.
+        Accepts day as int (1=Mon..7=Sun) or day name ('Monday'/'Mon').
+        """
+        # Direct match (supports data already using strings)
+        if (week, day, timeslot) in self.availability:
+            return True
+        # Normalize string day names to ISO int 1..7
+        if isinstance(day, str):
+            name_map = {
+                "Mon": 1, "Monday": 1,
+                "Tue": 2, "Tuesday": 2,
+                "Wed": 3, "Wednesday": 3,
+                "Thu": 4, "Thursday": 4,
+                "Fri": 5, "Friday": 5,
+                "Sat": 6, "Saturday": 6,
+                "Sun": 7, "Sunday": 7,
+            }
+            d_int = name_map.get(day, None)
+            if d_int is not None and (week, d_int, timeslot) in self.availability:
+                return True
+        return False
     
     def __repr__(self):
         return f"Lecturer({self.id}: {self.name}, Subject: {self.subject_id}, Priority: {self.priority})"
@@ -81,12 +104,12 @@ class ScheduledBlock:
     student_group_id: str
     room_id: str
     week: int
-    day: int  # 1-5 (Monday-Friday)
+    day: str  # Day name (Monday, Tuesday, etc.)
     timeslot: TimeSlot
     room_number: Optional[str] = None
     
     def __repr__(self):
-        return (f"ScheduledBlock(Week {self.week}, Day {self.day}, {self.timeslot.value}: "
+        return (f"ScheduledBlock(Week {self.week}, {self.day}, {self.timeslot.value}: "
                 f"Subject={self.subject_id}, Lecturer={self.lecturer_id}, "
                 f"Group={self.student_group_id}, Room={self.room_id})")
     
@@ -106,7 +129,7 @@ class Schedule:
     """Represents the complete schedule"""
     blocks: List[ScheduledBlock] = field(default_factory=list)
     weeks: int = 15  # Semester length in weeks
-    days_per_week: int = 5  # Monday-Friday
+    scheduled_days: List[str] = field(default_factory=lambda: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
     
     def add_block(self, block: ScheduledBlock) -> bool:
         """Add a block to the schedule if no conflicts exist"""
@@ -120,7 +143,7 @@ class Schedule:
         """Get all blocks scheduled for a subject"""
         return [b for b in self.blocks if b.subject_id == subject_id]
     
-    def is_slot_available(self, week: int, day: int, timeslot: TimeSlot, 
+    def is_slot_available(self, week: int, day: str, timeslot: TimeSlot, 
                          lecturer_id: str, room_id: str, student_group_id: str) -> bool:
         """Check if a time slot is available for given lecturer, room, and group"""
         for block in self.blocks:

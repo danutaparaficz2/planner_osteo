@@ -214,9 +214,7 @@ class InputEditor:
 
         self.config_vars = {
             "weeks": tk.StringVar(),
-            "days_per_week": tk.StringVar(),
-            "timeslots_per_day": tk.StringVar(),
-            "timeslots": tk.StringVar(),
+            "scheduled_days": {},  # Dictionary of {day_name: BooleanVar}
             "year": tk.StringVar(),
             "canton": tk.StringVar(),
         }
@@ -228,16 +226,25 @@ class InputEditor:
         banner.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
         row = 1
-        for key, label in (
-            ("weeks", "Weeks"),
-            ("days_per_week", "Days per week"),
-            ("timeslots_per_day", "Timeslots per day"),
-            ("timeslots", "Timeslots list (comma)"),
-            ("year", "Year (ISO weeks)"),
-        ):
-            ttk.Label(frame, text=label).grid(row=row, column=0, sticky="w", pady=4)
-            ttk.Entry(frame, textvariable=self.config_vars[key], width=40).grid(row=row, column=1, sticky="w", pady=4)
-            row += 1
+        ttk.Label(frame, text="Weeks").grid(row=row, column=0, sticky="w", pady=4)
+        ttk.Entry(frame, textvariable=self.config_vars["weeks"], width=40).grid(row=row, column=1, sticky="w", pady=4)
+        row += 1
+
+        # Days selection (checkboxes)
+        ttk.Label(frame, text="Scheduled Days").grid(row=row, column=0, sticky="nw", pady=4)
+        days_frame = ttk.Frame(frame)
+        days_frame.grid(row=row, column=1, sticky="w", pady=4)
+        
+        from models import DAY_NAMES
+        for day_name in DAY_NAMES:
+            var = tk.BooleanVar()
+            self.config_vars["scheduled_days"][day_name] = var
+            ttk.Checkbutton(days_frame, text=day_name, variable=var).pack(anchor="w")
+        
+        row += 1
+        ttk.Label(frame, text="Year (ISO weeks)").grid(row=row, column=0, sticky="w", pady=4)
+        ttk.Entry(frame, textvariable=self.config_vars["year"], width=40).grid(row=row, column=1, sticky="w", pady=4)
+        row += 1
 
         ttk.Label(frame, text="Canton (holidays)").grid(row=row, column=0, sticky="w", pady=4)
         canton_combo = ttk.Combobox(frame, values=list(CANTONS.keys()), textvariable=self.config_vars["canton"], state="readonly", width=37)
@@ -274,7 +281,7 @@ class InputEditor:
                 "student_groups": [],
                 "configuration": {
                     "weeks": 15,
-                    "days_per_week": 5,
+                    "scheduled_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
                     "timeslots_per_day": 2,
                     "timeslots": ["morning", "afternoon"],
                     "year": 2025,
@@ -313,7 +320,9 @@ class InputEditor:
         self.summary_cards["lecturers"].config(text=str(len(self.data.get("lecturers", []))))
         self.summary_cards["groups"].config(text=str(len(self.data.get("student_groups", []))))
         self.summary_cards["weeks"].config(text=str(cfg.get("weeks", "-")))
-        self.summary_cards["days"].config(text=str(cfg.get("days_per_week", "-")))
+        scheduled_days = cfg.get("scheduled_days", [])
+        days_str = ", ".join(scheduled_days[:3]) + ("..." if len(scheduled_days) > 3 else "")
+        self.summary_cards["days"].config(text=days_str if scheduled_days else "-")
         self.summary_cards["slots"].config(text=str(cfg.get("timeslots_per_day", "-")))
 
         self._load_summary_image()
@@ -386,10 +395,12 @@ class InputEditor:
     def _refresh_config(self) -> None:
         cfg = self.data.get("configuration", {})
         self.config_vars["weeks"].set(str(cfg.get("weeks", "")))
-        self.config_vars["days_per_week"].set(str(cfg.get("days_per_week", "")))
-        self.config_vars["timeslots_per_day"].set(str(cfg.get("timeslots_per_day", "")))
-        timeslots = cfg.get("timeslots", [])
-        self.config_vars["timeslots"].set(", ".join(timeslots) if timeslots else "")
+        
+        # Load scheduled days
+        scheduled_days = cfg.get("scheduled_days", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
+        for day_name, var in self.config_vars["scheduled_days"].items():
+            var.set(day_name in scheduled_days)
+        
         self.config_vars["year"].set(str(cfg.get("year", "")))
         self.config_vars["canton"].set(cfg.get("canton", "valais"))
 
@@ -439,7 +450,26 @@ class InputEditor:
     # External runners ----------------------------------------------
     def _run_script(self, script: str) -> None:
         try:
-            proc = subprocess.run([sys.executable, script], capture_output=True, text=True, cwd="." )
+            # When running as a PyInstaller app, call bundled helper EXEs on Windows
+            if getattr(sys, 'frozen', False):
+                exe_name = None
+                if os.name == 'nt':
+                    mapping = {
+                        'main.py': 'PlannerScheduler.exe',
+                        'visualize_schedule.py': 'PlannerVisualizeSchedule.exe',
+                        'visualize_input_data.py': 'PlannerVisualizeInput.exe',
+                    }
+                    exe_name = mapping.get(script)
+                    if exe_name:
+                        exe_path = os.path.join(os.path.dirname(sys.executable), exe_name)
+                        proc = subprocess.run([exe_path], capture_output=True, text=True, cwd=os.path.dirname(sys.executable))
+                    else:
+                        proc = subprocess.run([sys.executable], capture_output=True, text=True, cwd=os.path.dirname(sys.executable))
+                else:
+                    # On macOS/Linux, try running the unfrozen Python with the script (developer environment)
+                    proc = subprocess.run([sys.executable, script], capture_output=True, text=True, cwd=".")
+            else:
+                proc = subprocess.run([sys.executable, script], capture_output=True, text=True, cwd=".")
         except FileNotFoundError:
             messagebox.showerror("Error", f"Could not find {script}")
             return
@@ -1228,12 +1258,17 @@ class InputEditor:
         cfg = self.data.get("configuration", {})
         try:
             cfg["weeks"] = int(self.config_vars["weeks"].get())
-            cfg["days_per_week"] = int(self.config_vars["days_per_week"].get())
-            cfg["timeslots_per_day"] = int(self.config_vars["timeslots_per_day"].get())
         except ValueError:
-            messagebox.showerror("Invalid", "Configuration numeric fields must be integers")
+            messagebox.showerror("Invalid", "Weeks must be an integer")
             return
-        cfg["timeslots"] = [t.strip() for t in self.config_vars["timeslots"].get().split(",") if t.strip()]
+        
+        # Collect selected days
+        scheduled_days = [day for day, var in self.config_vars["scheduled_days"].items() if var.get()]
+        if not scheduled_days:
+            messagebox.showerror("Invalid", "Select at least one day")
+            return
+        cfg["scheduled_days"] = sorted(scheduled_days, key=lambda d: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].index(d))
+        
         try:
             yr = int(self.config_vars["year"].get()) if self.config_vars["year"].get().strip() else None
         except ValueError:

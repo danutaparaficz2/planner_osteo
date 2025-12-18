@@ -11,6 +11,7 @@ This scheduler creates a semester schedule that:
 - Assigns theory rooms for theory subjects
 """
 import sys
+import json
 import random
 from data_loader import load_from_json, print_data_summary
 from scheduler import OsteopathyScheduler
@@ -30,6 +31,13 @@ def main():
     # Load data from JSON file
     print("Loading data from input_data.json...")
     lecturers, subjects, rooms, student_groups, semester_weeks, year, canton = load_from_json('input_data.json')
+    # Load scheduled_days from configuration (default Mon-Fri)
+    try:
+        with open('input_data.json', 'r') as f:
+            raw_cfg = json.load(f).get('configuration', {})
+        scheduled_days = raw_cfg.get('scheduled_days', ["Monday","Tuesday","Wednesday","Thursday","Friday"])
+    except Exception:
+        scheduled_days = ["Monday","Tuesday","Wednesday","Thursday","Friday"]
     print_data_summary(lecturers, subjects, rooms, student_groups)
     print(f"Year: {year}, Canton: {canton.upper()}")
     print()
@@ -43,7 +51,8 @@ def main():
         student_groups=student_groups,
         semester_weeks=semester_weeks,
         year=year,
-        canton=canton
+        canton=canton,
+        scheduled_days=scheduled_days
     )
     print()
     

@@ -4,7 +4,7 @@ Core scheduling algorithm for osteopathy education planner.
 from typing import List, Dict, Optional, Set, Tuple
 from models import (
     Lecturer, Subject, Room, StudentGroup, Schedule, 
-    ScheduledBlock, TimeSlot, RoomType
+    ScheduledBlock, TimeSlot, RoomType, DAY_NAMES
 )
 import random
 from datetime import date
@@ -24,7 +24,8 @@ class OsteopathyScheduler:
                  student_groups: List[StudentGroup],
                  semester_weeks: int = 15,
                  year: int = 2025,
-                 canton: str = "valais"):
+                 canton: str = "valais",
+                 scheduled_days: List[str] = None):
         self.lecturers = {l.id: l for l in lecturers}
         self.subjects = {s.id: s for s in subjects}
         self.rooms = {r.id: r for r in rooms}
@@ -32,7 +33,8 @@ class OsteopathyScheduler:
         self.semester_weeks = semester_weeks
         self.year = year
         self.canton = canton
-        self.schedule = Schedule(weeks=semester_weeks)
+        self.scheduled_days = scheduled_days or ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        self.schedule = Schedule(weeks=semester_weeks, scheduled_days=self.scheduled_days)
         
         # Organize lecturers by priority
         self.priority_lecturers = [l for l in lecturers if l.priority <= 5]
@@ -50,6 +52,7 @@ class OsteopathyScheduler:
         3. Schedule practical subjects (A, B, C, D) mixed across semester
         """
         print(f"Creating schedule for {self.semester_weeks} weeks...")
+        print(f"Scheduled days: {self.scheduled_days}")
         print(f"Priority lecturers: {len(self.priority_lecturers)}")
         
         # Step 1: Schedule priority lecturers' theory subjects
@@ -141,7 +144,7 @@ class OsteopathyScheduler:
         scheduled = 0
         
         for week in range(self.semester_weeks):
-            for day in range(1, 6):  # Monday-Friday
+            for day in self.scheduled_days:
                 for timeslot in [TimeSlot.MORNING, TimeSlot.AFTERNOON]:
                     if scheduled >= blocks_needed:
                         return
@@ -149,16 +152,23 @@ class OsteopathyScheduler:
                     if self._try_schedule_block(lecturer, subject, group, week, day, timeslot):
                         scheduled += 1
     
-    def _is_holiday_date(self, week: int, day: int) -> bool:
+    def _day_to_iso_day(self, day_name: str) -> int:
+        """Convert day name to ISO day number (1-7, Monday-Sunday)"""
+        day_map = {"Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, 
+                   "Friday": 5, "Saturday": 6, "Sunday": 7}
+        return day_map.get(day_name, 1)
+    
+    def _is_holiday_date(self, week: int, day_name: str) -> bool:
         """Check if the given ISO week/day falls on a holiday"""
         try:
-            dt = date.fromisocalendar(self.year, week, day)
+            iso_day = self._day_to_iso_day(day_name)
+            dt = date.fromisocalendar(self.year, week, iso_day)
             return is_holiday(self.canton, self.year, dt.month, dt.day)
         except Exception:
             return False
     
     def _try_schedule_block(self, lecturer: Lecturer, subject: Subject, 
-                           group: StudentGroup, week: int, day: int, 
+                           group: StudentGroup, week: int, day: str, 
                            timeslot: TimeSlot) -> bool:
         """Try to schedule a single block at the specified time"""
         # Never schedule on holidays
@@ -224,7 +234,7 @@ class OsteopathyScheduler:
         # Schedule blocks in mixed order
         scheduled = 0
         for week in range(self.semester_weeks):
-            for day in range(1, 6):  # Monday-Friday
+            for day in self.scheduled_days:
                 for timeslot in [TimeSlot.MORNING, TimeSlot.AFTERNOON]:
                     if scheduled >= len(subject_blocks):
                         return
@@ -253,7 +263,7 @@ class OsteopathyScheduler:
                         if self.schedule.add_block(block):
                             scheduled += 1
     
-    def _find_available_room(self, room_type: RoomType, week: int, day: int, 
+    def _find_available_room(self, room_type: RoomType, week: int, day: str, 
                             timeslot: TimeSlot, lecturer_id: str, 
                             group_id: str) -> Optional[Room]:
         """Find an available room of the specified type"""
@@ -290,13 +300,11 @@ class OsteopathyScheduler:
             output.append("-" * 80)
             
             # Group by day
-            for day in range(1, 6):
-                day_blocks = [b for b in week_blocks if b.day == day]
+            for day_name in self.scheduled_days:
+                day_blocks = [b for b in week_blocks if b.day == day_name]
                 if not day_blocks:
                     continue
-                
-                day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-                output.append(f"\n  {day_names[day - 1]}:")
+                output.append(f"\n  {day_name}:")
                 
                 # Group by timeslot
                 for timeslot in [TimeSlot.MORNING, TimeSlot.AFTERNOON]:
@@ -367,7 +375,7 @@ class OsteopathyScheduler:
         
         for room_id, count in sorted(room_blocks.items(), key=lambda x: -x[1]):
             room = self.rooms[room_id]
-            total_slots = self.semester_weeks * 5 * 2  # weeks * days * timeslots
+            total_slots = self.semester_weeks * len(self.scheduled_days) * 2  # weeks * days * timeslots
             utilization = (count / total_slots) * 100
             print(f"  {room.name} ({room.room_type.value}): {count} blocks ({utilization:.1f}% utilization)")
         

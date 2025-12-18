@@ -2,7 +2,7 @@
   "subjects": [
     {
       "id": "S1",
-      "name": "Anatomy",
+      "name": "fgergre",
       "blocks_required": 20,
       "room_type": "theory",
       "spread": true
@@ -470,7 +470,80 @@
       "name": "Dr. Martinez",
       "subject_id": "S3",
       "priority": 18,
-      "availability": []
+      "availability": {
+        "patterns": [
+          {
+            "weeks": "1-15",
+            "days": {
+              "Mon": [
+                "morning"
+              ],
+              "Tue": [
+                "afternoon"
+              ],
+              "Wed": [
+                "afternoon"
+              ],
+              "Thu": [
+                "afternoon"
+              ],
+              "Fri": [
+                "afternoon"
+              ]
+            }
+          }
+        ],
+        "exceptions": [
+          {
+            "week": 9,
+            "day": "Wed",
+            "remove": [
+              "morning"
+            ]
+          },
+          {
+            "week": 2,
+            "day": "Mon",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          },
+          {
+            "week": 2,
+            "day": "Thu",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          },
+          {
+            "week": 2,
+            "day": "Fri",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          },
+          {
+            "week": 2,
+            "day": "Wed",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          },
+          {
+            "week": 2,
+            "day": "Tue",
+            "remove": [
+              "afternoon",
+              "morning"
+            ]
+          }
+        ],
+        "blackouts": []
+      }
     },
     {
       "id": "L19",
@@ -489,6 +562,13 @@
         "exceptions": [],
         "blackouts": []
       }
+    },
+    {
+      "id": "danka",
+      "name": "gfdg",
+      "subject_id": "S2",
+      "priority": 2,
+      "availability": []
     }
   ],
   "student_groups": [
@@ -505,7 +585,7 @@
     },
     {
       "id": "G2",
-      "name": "Group 2 - Year 2",
+      "name": "Group 2 - Year 22",
       "subject_ids": [
         "S3",
         "S4",

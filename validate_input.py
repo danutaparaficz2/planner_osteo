@@ -106,12 +106,20 @@ def validate_data(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     # Configuration
     cfg = data["configuration"]
     weeks = cfg.get("weeks")
-    days = cfg.get("days_per_week")
+    # Support new scheduled_days (list of names) instead of days_per_week
+    scheduled_days = cfg.get("scheduled_days")
     tpd = cfg.get("timeslots_per_day")
     if not isinstance(weeks, int) or weeks <= 0:
         errors.append("configuration.weeks must be positive int")
-    if not isinstance(days, int) or days <= 0 or days > 7:
-        errors.append("configuration.days_per_week must be 1..7")
+    # Validate scheduled_days if provided
+    if scheduled_days is not None:
+        if not isinstance(scheduled_days, list) or not scheduled_days:
+            errors.append("configuration.scheduled_days must be a non-empty list of day names")
+        else:
+            allowed_names = {"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"}
+            for dname in scheduled_days:
+                if dname not in allowed_names:
+                    errors.append(f"configuration.scheduled_days contains invalid day: {dname}")
     if not isinstance(tpd, int) or tpd <= 0:
         errors.append("configuration.timeslots_per_day must be positive int")
     # timeslots array
@@ -132,8 +140,10 @@ def validate_data(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
                     if w >= weeks:
                         errors.append(f"Lecturer {l['id']} availability[{idx}] week {w} >= configured weeks {weeks}")
                         ok = False
-                    if d < 1 or d > days:
-                        errors.append(f"Lecturer {l['id']} availability[{idx}] day {d} out of 1..{days}")
+                    # For legacy numeric day format, bound using configured scheduled_days length or default 5
+                    max_days = len(scheduled_days) if isinstance(scheduled_days, list) and scheduled_days else 5
+                    if d < 1 or d > max_days:
+                        errors.append(f"Lecturer {l['id']} availability[{idx}] day {d} out of 1..{max_days}")
                         ok = False
 
     return ok, errors
