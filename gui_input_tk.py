@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import re
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from typing import Any, Dict, List, Optional
@@ -103,10 +104,6 @@ class InputEditor:
         self.calendar_image_label.pack(anchor="center")
         self._load_summary_image()
 
-        action_frame = ttk.Frame(container)
-        action_frame.pack(fill=tk.X, pady=6)
-        ttk.Button(action_frame, text="Open images folder", command=self._open_images_folder).pack(side=tk.LEFT)
-
         # Stats cards under the calendar
         self.summary_cards = {}
         cards_frame = ttk.Frame(container)
@@ -122,12 +119,13 @@ class InputEditor:
         ):
             card = ttk.Frame(cards_frame, padding=8)
             card.pack(side=tk.LEFT, padx=6, pady=6)
-            ttk.Label(card, text=label, font=("Helvetica", 10, "bold")).pack(anchor="center")
-            val = ttk.Label(card, text="-", font=("Helvetica", 12))
+            ttk.Label(card, text=label, font=("Helvetica", 15, "bold")).pack(anchor="center")
+            val = ttk.Label(card, text="-", font=("Helvetica", 18))
             val.pack(anchor="center", pady=(4, 0))
             self.summary_cards[key] = val
 
-        self.summary_details = tk.Text(container, height=12, wrap="word", state=tk.DISABLED)
+        self.summary_details = tk.Text(container, height=12, wrap="word", state=tk.DISABLED, 
+                                       font=("Helvetica", 14), bg="#E8E8E8")
         self.summary_details.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
 
     def _build_subjects_tab(self) -> None:
@@ -175,6 +173,8 @@ class InputEditor:
             self.lecturers_tree.heading(cid, text=text)
             if cid == "vacations":
                 self.lecturers_tree.column(cid, width=260, anchor="center", stretch=True)
+            elif cid == "subject_id":
+                self.lecturers_tree.column(cid, width=250, anchor="center", stretch=True)
             elif cid == "name":
                 self.lecturers_tree.column(cid, width=200, anchor="center", stretch=True)
             elif cid == "visualize":
@@ -202,11 +202,17 @@ class InputEditor:
         headings = {
             "id": "ID",
             "name": "Name",
-            "subjects": "Subject IDs",
+            "subjects": "Subjects",
         }
         for cid, text in headings.items():
             self.groups_tree.heading(cid, text=text)
-            self.groups_tree.column(cid, width=140 if cid != "name" else 200, anchor="center")
+            if cid == "name":
+                width = 200
+            elif cid == "subjects":
+                width = 350  # Wide column for subject names
+            else:
+                width = 140
+            self.groups_tree.column(cid, width=width, anchor="center")
         self.groups_tree.pack(fill=tk.BOTH, expand=True)
 
         btns = ttk.Frame(frame)
@@ -228,7 +234,7 @@ class InputEditor:
 
         # Rooms info banner
         theory_count, practical_count = self._get_room_counts()
-        banner = ttk.Label(frame, text=f"Rooms (default if unspecified): Theory {theory_count}, Practical {practical_count}",
+        banner = ttk.Label(frame, text=f"Rooms: Theory {theory_count}, Practical {practical_count}",
                            font=("Helvetica", 10, "bold"))
         banner.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
@@ -317,8 +323,8 @@ class InputEditor:
             theory = sum(1 for r in rooms if isinstance(r, dict) and r.get("room_type") == "theory")
             practical = sum(1 for r in rooms if isinstance(r, dict) and r.get("room_type") == "practical")
         else:
-            # Defaults from data_loader: 10 theory, 1 practical
-            theory, practical = 10, 1
+            # Defaults from data_loader: 30 theory, 1 practical
+            theory, practical = 30, 1
         return theory, practical
 
     def _update_summary(self) -> None:
@@ -352,6 +358,7 @@ class InputEditor:
         self.summary_details.config(state=tk.NORMAL)
         self.summary_details.delete("1.0", tk.END)
         self.summary_details.insert(tk.END, "\n".join(lines))
+        self.summary_details.config(state=tk.DISABLED)
 
     def _active_days_short(self) -> list[str]:
         cfg = self.data.get("configuration", {})
@@ -362,6 +369,8 @@ class InputEditor:
             if short in DAY_SHORT_TO_ISO:
                 res.append(short)
         return res
+
+    # Subject ID generation removed per user request; IDs are user-defined.
 
     def _active_days_iso(self) -> list[int]:
         return [DAY_SHORT_TO_ISO[s] for s in self._active_days_short()]
@@ -386,6 +395,9 @@ class InputEditor:
 
     def _refresh_lecturers(self) -> None:
         self.lecturers_tree.delete(*self.lecturers_tree.get_children())
+        # Create a map of subject ID to name for lookup
+        subject_map = {s.get("id", ""): s.get("name", "") for s in self.data.get("subjects", [])}
+        
         for l in self.data.get("lecturers", []):
             avail = l.get("availability", [])
             label = "patterns" if isinstance(avail, dict) else "list" if isinstance(avail, list) else "-"
@@ -399,10 +411,14 @@ class InputEditor:
                     slots = sum(len(e.get("remove", []) or []) for e in exc)
                     if slots:
                         vacations = f"{slots} slots"
+            # Get subject name, fall back to ID if not found
+            subject_id = l.get("subject_id", "")
+            subject_display = subject_map.get(subject_id, subject_id)
+            
             self.lecturers_tree.insert("", tk.END, values=(
                 l.get("id", ""),
                 l.get("name", ""),
-                l.get("subject_id", ""),
+                subject_display,
                 l.get("priority", ""),
                 label,
                 vacations,
@@ -412,8 +428,14 @@ class InputEditor:
 
     def _refresh_groups(self) -> None:
         self.groups_tree.delete(*self.groups_tree.get_children())
+        # Create a map of subject ID to name for lookup
+        subject_map = {s.get("id", ""): s.get("name", "") for s in self.data.get("subjects", [])}
+        
         for g in self.data.get("student_groups", []):
-            subj_str = ", ".join(g.get("subject_ids", []))
+            # Convert subject IDs to names
+            subject_ids = g.get("subject_ids", [])
+            subject_names = [subject_map.get(sid, sid) for sid in subject_ids]  # Use name if available, otherwise ID
+            subj_str = ", ".join(subject_names)
             self.groups_tree.insert("", tk.END, values=(g.get("id", ""), g.get("name", ""), subj_str))
         self.groups_tree.bind("<Double-1>", self._start_edit_group_cell)
 
@@ -516,12 +538,18 @@ class InputEditor:
 
     def _run_scheduler(self) -> None:
         self._run_script("main.py")
+        # After scheduler runs, regenerate visualizations
+        self._run_script("visualize_schedule.py")
+        # Refresh summary to load new images
+        self._update_summary()
 
     def _visualize_input(self) -> None:
         self._run_script("visualize_input_data.py")
 
     def _visualize_schedule(self) -> None:
         self._run_script("visualize_schedule.py")
+        # Refresh summary to load new images
+        self._update_summary()
 
     # Subject handlers -----------------------------------------------
     def _add_subject(self) -> None:
@@ -542,7 +570,6 @@ class InputEditor:
         win = tk.Toplevel(self.root)
         win.title("Subject")
         subj = self.data["subjects"][index] if index is not None else {}
-
         vars_map = {
             "id": tk.StringVar(value=subj.get("id", "")),
             "name": tk.StringVar(value=subj.get("name", "")),
@@ -575,6 +602,7 @@ class InputEditor:
             except ValueError:
                 messagebox.showerror("Invalid", "Blocks required must be an integer")
                 return
+            old_id = subj.get("id", "") if index is not None else ""
             new_obj = {
                 "id": vars_map["id"].get().strip(),
                 "name": vars_map["name"].get().strip(),
@@ -582,15 +610,29 @@ class InputEditor:
                 "room_type": vars_map["room_type"].get(),
                 "spread": bool(vars_map["spread"].get()),
             }
+            # Validate ID uniqueness/non-empty before saving
+            ignore_idx = index if index is not None else None
+            if not self._is_unique_subject_id(new_obj["id"], ignore_index=ignore_idx):
+                return
+            # Confirm ID change if it has references
+            if index is not None and old_id and old_id != new_obj["id"]:
+                if not self._confirm_subject_id_change(old_id, new_obj["id"]):
+                    return
             if index is None:
                 self.data["subjects"].append(new_obj)
             else:
+                # Update references if ID changed
+                if old_id and old_id != new_obj["id"]:
+                    self._replace_subject_id(old_id, new_obj["id"])
                 self.data["subjects"][index] = new_obj
             self._refresh_all()
             self._save_to_disk(show_dialog=False)
             win.destroy()
 
-        ttk.Button(win, text="Save", command=submit).grid(row=row, column=0, columnspan=2, pady=10)
+        btn_frame = ttk.Frame(win)
+        btn_frame.grid(row=row, column=0, columnspan=2, pady=10)
+        ttk.Button(btn_frame, text="Save", command=submit).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Cancel", command=win.destroy).pack(side=tk.LEFT, padx=4)
 
     # Lecturer handlers ----------------------------------------------
     def _add_lecturer(self) -> None:
@@ -610,6 +652,10 @@ class InputEditor:
             return
         item_index = self.lecturers_tree.index(row_id)
         lecturer = self.data["lecturers"][item_index]
+
+        # ID column is read-only, cannot be edited
+        if col_idx == 0:
+            return
 
         # Availability column opens the availability editor directly
         if col_idx == 4:
@@ -678,16 +724,29 @@ class InputEditor:
         win.title("Lecturer")
         lec = self.data["lecturers"][index] if index is not None else {}
 
+        # Auto-generate ID if new lecturer
+        lecturer_id = lec.get("id", "")
+        if not lecturer_id and index is None:
+            # Generate next ID
+            existing_ids = [l.get("id", "") for l in self.data.get("lecturers", [])]
+            next_num = 1
+            while f"L{next_num}" in existing_ids:
+                next_num += 1
+            lecturer_id = f"L{next_num}"
+
         vars_map = {
-            "id": tk.StringVar(value=lec.get("id", "")),
             "name": tk.StringVar(value=lec.get("name", "")),
             "subject_id": tk.StringVar(value=lec.get("subject_id", "")),
             "priority": tk.StringVar(value=lec.get("priority", "")),
         }
 
         row = 0
+        # Display ID as read-only label
+        ttk.Label(win, text="ID").grid(row=row, column=0, sticky="w", pady=4, padx=6)
+        ttk.Label(win, text=lecturer_id, font=("Helvetica", 10, "bold")).grid(row=row, column=1, sticky="w", pady=4, padx=6)
+        row += 1
+
         for key, label in (
-            ("id", "ID"),
             ("name", "Name"),
             ("subject_id", "Subject ID"),
             ("priority", "Priority"),
@@ -717,7 +776,7 @@ class InputEditor:
                 messagebox.showerror("Invalid", "Priority must be an integer")
                 return
             new_obj = {
-                "id": vars_map["id"].get().strip(),
+                "id": lecturer_id,
                 "name": vars_map["name"].get().strip(),
                 "subject_id": vars_map["subject_id"].get().strip(),
                 "priority": prio,
@@ -731,7 +790,10 @@ class InputEditor:
             self._save_to_disk(show_dialog=False)
             win.destroy()
 
-        ttk.Button(win, text="Save", command=submit).grid(row=row, column=0, columnspan=2, pady=10)
+        btn_frame = ttk.Frame(win)
+        btn_frame.grid(row=row, column=0, columnspan=2, pady=10)
+        ttk.Button(btn_frame, text="Save", command=submit).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Cancel", command=win.destroy).pack(side=tk.LEFT, padx=4)
 
     def _availability_editor(self, current: Any) -> Any | None:
         win = tk.Toplevel(self.root)
@@ -1254,15 +1316,28 @@ class InputEditor:
         win.title("Student Group")
         grp = self.data["student_groups"][index] if index is not None else {}
 
+        # Auto-generate ID if new group
+        group_id = grp.get("id", "")
+        if not group_id and index is None:
+            # Generate next ID
+            existing_ids = [g.get("id", "") for g in self.data.get("student_groups", [])]
+            next_num = 1
+            while f"G{next_num}" in existing_ids:
+                next_num += 1
+            group_id = f"G{next_num}"
+
         vars_map = {
-            "id": tk.StringVar(value=grp.get("id", "")),
             "name": tk.StringVar(value=grp.get("name", "")),
             "subject_ids": tk.StringVar(value=", ".join(grp.get("subject_ids", []))),
         }
 
         row = 0
+        # Display ID as read-only label
+        ttk.Label(win, text="ID").grid(row=row, column=0, sticky="w", pady=4, padx=6)
+        ttk.Label(win, text=group_id, font=("Helvetica", 10, "bold")).grid(row=row, column=1, sticky="w", pady=4, padx=6)
+        row += 1
+
         for key, label in (
-            ("id", "ID"),
             ("name", "Name"),
             ("subject_ids", "Subject IDs (comma separated)"),
         ):
@@ -1273,7 +1348,7 @@ class InputEditor:
         def submit() -> None:
             subj_ids = [s.strip() for s in vars_map["subject_ids"].get().split(",") if s.strip()]
             new_obj = {
-                "id": vars_map["id"].get().strip(),
+                "id": group_id,
                 "name": vars_map["name"].get().strip(),
                 "subject_ids": subj_ids,
             }
@@ -1285,7 +1360,10 @@ class InputEditor:
             self._save_to_disk(show_dialog=False)
             win.destroy()
 
-        ttk.Button(win, text="Save", command=submit).grid(row=row, column=0, columnspan=2, pady=10)
+        btn_frame = ttk.Frame(win)
+        btn_frame.grid(row=row, column=0, columnspan=2, pady=10)
+        ttk.Button(btn_frame, text="Save", command=submit).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Cancel", command=win.destroy).pack(side=tk.LEFT, padx=4)
 
     # Config handlers -------------------------------------------------
     def _apply_config(self) -> None:
@@ -1312,7 +1390,17 @@ class InputEditor:
         canton = self.config_vars["canton"].get().strip().lower()
         if canton in CANTONS:
             cfg["canton"] = canton
+        
+        # Save changes to disk
+        self._save_to_disk(show_dialog=False)
         self._refresh_config()
+        
+        # Update summary to reflect changes immediately
+        self._update_summary()
+        
+        # Inform user that schedule needs to be regenerated
+        messagebox.showinfo("Configuration saved", 
+                          "Configuration has been saved. Go to 'Run & Validate' tab and click 'Run Scheduler' to regenerate the schedule with new settings.")
 
     def _start_edit_subject_cell(self, event: tk.Event) -> None:
         row_id = self.subjects_tree.identify_row(event.y)
@@ -1337,8 +1425,21 @@ class InputEditor:
             new_val = entry.get().strip()
             entry.destroy()
             subj = self.data["subjects"][item_index]
+            # Track old ID for referential integrity updates
+            old_id = subj.get("id", "")
             if col_idx == 0:
+                # Validate uniqueness/non-empty for inline ID changes
+                if not self._is_unique_subject_id(new_val, ignore_index=item_index):
+                    # Revert view to old value and stop
+                    self._refresh_subjects()
+                    return
+                # Confirm change if referenced
+                if old_id and old_id != new_val:
+                    if not self._confirm_subject_id_change(old_id, new_val):
+                        self._refresh_subjects()
+                        return
                 subj["id"] = new_val
+                self._replace_subject_id(old_id, new_val)
             elif col_idx == 1:
                 subj["name"] = new_val
             elif col_idx == 2:
@@ -1357,6 +1458,58 @@ class InputEditor:
         entry.bind("<FocusOut>", commit)
         entry.bind("<Escape>", lambda e: entry.destroy())
 
+    def _replace_subject_id(self, old_id: str, new_id: str) -> None:
+        """Update references to a subject ID across lecturers and student groups."""
+        if not old_id or old_id == new_id:
+            return
+        # Update lecturers' subject_id
+        for lec in self.data.get("lecturers", []):
+            if lec.get("subject_id") == old_id:
+                lec["subject_id"] = new_id
+        # Update groups' subject_ids lists
+        for grp in self.data.get("student_groups", []):
+            ids = grp.get("subject_ids", [])
+            if ids:
+                grp["subject_ids"] = [new_id if sid == old_id else sid for sid in ids]
+
+    def _confirm_subject_id_change(self, old_id: str, new_id: str) -> bool:
+        """Confirm with user before changing a subject ID that is referenced elsewhere."""
+        if not old_id or old_id == new_id:
+            return True
+        # Count references
+        lec_refs = sum(1 for lec in self.data.get("lecturers", []) if lec.get("subject_id") == old_id)
+        grp_refs = sum(1 for grp in self.data.get("student_groups", []) if old_id in grp.get("subject_ids", []))
+        total_refs = lec_refs + grp_refs
+        if total_refs == 0:
+            return True
+        return messagebox.askyesno(
+            "Confirm ID Change",
+            (
+                f"Subject ID '{old_id}' is referenced by {lec_refs} lecturer(s) and {grp_refs} group(s).\n\n"
+                f"Change ID to '{new_id}' and update all references?"
+            ),
+        )
+
+    def _is_unique_subject_id(self, new_id: str, ignore_index: Optional[int] = None) -> bool:
+        """Return True if `new_id` is valid and unique among subjects (excluding `ignore_index`)."""
+        if not new_id:
+            messagebox.showerror("Invalid", "Subject ID cannot be empty")
+            return False
+        # Disallow whitespace and enforce allowed pattern
+        if any(c.isspace() for c in new_id):
+            messagebox.showerror("Invalid", "Subject ID cannot contain spaces")
+            return False
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", new_id):
+            messagebox.showerror("Invalid", "Subject ID may only contain letters, digits, hyphens, and underscores")
+            return False
+        for i, s in enumerate(self.data.get("subjects", [])):
+            if ignore_index is not None and i == ignore_index:
+                continue
+            if s.get("id", "") == new_id:
+                messagebox.showerror("Duplicate ID", f"Subject ID '{new_id}' already exists. Please choose a different ID.")
+                return False
+        return True
+
     def _start_edit_group_cell(self, event: tk.Event) -> None:
         row_id = self.groups_tree.identify_row(event.y)
         col_id = self.groups_tree.identify_column(event.x)
@@ -1366,6 +1519,11 @@ class InputEditor:
         bbox = self.groups_tree.bbox(row_id, col_id)
         if not bbox:
             return
+        
+        # ID column is read-only, cannot be edited
+        if col_idx == 0:
+            return
+        
         x, y, w, h = bbox
         item_index = self.groups_tree.index(row_id)
         current_values = list(self.groups_tree.item(row_id, "values"))
@@ -1380,9 +1538,7 @@ class InputEditor:
             new_val = entry.get().strip()
             entry.destroy()
             grp = self.data["student_groups"][item_index]
-            if col_idx == 0:
-                grp["id"] = new_val
-            elif col_idx == 1:
+            if col_idx == 1:
                 grp["name"] = new_val
             elif col_idx == 2:
                 grp["subject_ids"] = [s.strip() for s in new_val.split(",") if s.strip()]

@@ -86,15 +86,17 @@ def create_room_calendar(schedule_blocks, weeks=15):
         if not room_blocks:
             continue
         
-        # Create figure
-        fig, axes = plt.subplots(5, 3, figsize=(16, 10))
+        # Create figure - dynamic grid based on number of weeks
+        rows = (weeks + 2) // 3  # Round up to fit all weeks
+        cols = min(3, weeks)  # Max 3 columns
+        fig, axes = plt.subplots(rows, cols, figsize=(16, 10))
         fig.suptitle(f'Room Calendar: {room}', fontsize=14, fontweight='bold')
         
         # Flatten axes for easier indexing
-        axes = axes.flatten()
+        axes = axes.flatten() if weeks > 1 else [axes]
         
         # Create calendar for each week
-        for week in range(1, min(weeks + 1, 16)):
+        for week in range(1, weeks + 1):
             ax = axes[week - 1]
             
             week_blocks = [b for b in room_blocks if b['week'] == week]
@@ -157,7 +159,7 @@ def create_room_calendar(schedule_blocks, weeks=15):
         
         # Save figure
         room_filename = room.replace(' ', '_').replace('/', '_')
-        output_dir = os.path.join('images', 'schedule')
+        output_dir = os.path.join('images', 'schedule', 'rooms')
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, f'calendar_room_{room_filename}.png')
         fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
@@ -177,15 +179,17 @@ def create_group_calendar(schedule_blocks, weeks=15):
         if not group_blocks:
             continue
         
-        # Create figure
-        fig, axes = plt.subplots(5, 3, figsize=(16, 10))
+        # Create figure - dynamic grid based on number of weeks
+        rows = (weeks + 2) // 3  # Round up to fit all weeks
+        cols = min(3, weeks)  # Max 3 columns
+        fig, axes = plt.subplots(rows, cols, figsize=(16, 10))
         fig.suptitle(f'Student Group Calendar: {group}', fontsize=14, fontweight='bold')
         
         # Flatten axes for easier indexing
-        axes = axes.flatten()
+        axes = axes.flatten() if weeks > 1 else [axes]
         
         # Create calendar for each week
-        for week in range(1, min(weeks + 1, 16)):
+        for week in range(1, weeks + 1):
             ax = axes[week - 1]
             
             week_blocks = [b for b in group_blocks if b['week'] == week]
@@ -249,7 +253,7 @@ def create_group_calendar(schedule_blocks, weeks=15):
         
         # Save figure
         group_filename = group.replace(' ', '_').replace('-', '_')
-        output_dir = os.path.join('images', 'schedule')
+        output_dir = os.path.join('images', 'schedule', 'groups')
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, f'calendar_group_{group_filename}.png')
         fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
@@ -259,130 +263,140 @@ def create_group_calendar(schedule_blocks, weeks=15):
 
 def create_weekly_overview(schedule_blocks, weeks_to_show=5):
     """Create a comprehensive weekly overview showing all activities"""
-    
+
     for week in range(1, weeks_to_show + 1):
         week_blocks = [b for b in schedule_blocks if b['week'] == week]
-        
         if not week_blocks:
             continue
-        
-        # Create figure
+
         fig, ax = plt.subplots(figsize=(18, 10))
-        fig.suptitle(f'Week {week} - Complete Schedule Overview', 
-            fontsize=14, fontweight='bold')
-        
-        # Get unique rooms and sort them
+        fig.suptitle(
+            f'Week {week} - Complete Schedule Overview', fontsize=14, fontweight='bold'
+        )
+
         rooms = sorted(set(block['room'] for block in week_blocks))
-        
-        # Create grid: days x rooms
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-        
-        # Setup grid
-        y_positions = {}
-        for idx, room in enumerate(rooms):
-            y_positions[room] = len(rooms) - idx - 1
-        
+
+        # Row index for each room (top row = highest y)
+        y_positions = {room: len(rooms) - i - 1 for i, room in enumerate(rooms)}
+
         # Draw grid and blocks
-        for day_idx, day in enumerate(days):
-            for room_idx, room in enumerate(rooms):
+        for day_idx, _day in enumerate(days):
+            for room in rooms:
                 y = y_positions[room]
-                
-                # Draw room row label (centered vertically in the row, left side)
+
+                # Room label once per row (left side)
                 if day_idx == 0:
-                    ax.text(-0.6, y + 0.45, room,
-                           va='center', ha='right', fontsize=10, fontweight='bold')
-                
-                # Morning slot (left half)
-                morning_block = next((b for b in week_blocks 
-                                    if b['day'] == day_idx + 1 
-                                    and b['timeslot'] == 'morning' 
-                                    and b['room'] == room), None)
-                
-                # Morning slot (left half) - width 1.0 to fill day properly
+                    ax.text(
+                        -0.6, y + 0.45, room, va='center', ha='right', fontsize=10, fontweight='bold'
+                    )
+
+                # Morning slot
+                morning_block = next(
+                    (
+                        b
+                        for b in week_blocks
+                        if b['day'] == day_idx + 1 and b['timeslot'] == 'morning' and b['room'] == room
+                    ),
+                    None,
+                )
                 x_morning = day_idx * 2
                 if morning_block:
                     color = '#e74c3c' if morning_block['room_type'] == 'practical' else '#3498db'
-                    rect = Rectangle((x_morning, y), 1.0, 0.9,
-                                   facecolor=color, edgecolor='black', linewidth=2, alpha=0.8)
+                    rect = Rectangle((x_morning, y), 1.0, 0.9, facecolor=color, edgecolor='black', linewidth=2, alpha=0.8)
                     ax.add_patch(rect)
-                    
-                    # Add "AM" label in small text
-                    ax.text(x_morning + 0.08, y + 0.75, 'AM',
-                           ha='left', va='top', fontsize=6, fontweight='bold', color='white',
-                           bbox=dict(boxstyle='round,pad=0.2', facecolor='black', alpha=0.5))
-                    
+                    # AM label (unchanged size)
+                    ax.text(
+                        x_morning + 0.08,
+                        y + 0.75,
+                        'AM',
+                        ha='left',
+                        va='top',
+                        fontsize=6,
+                        fontweight='bold',
+                        color='white',
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='black', alpha=0.5),
+                    )
+                    # Bigger subject / lecturer / group text
                     text = f"{morning_block['subject_name']}\n{morning_block['lecturer']}\n{morning_block['group']}"
-                    ax.text(x_morning + 0.5, y + 0.35, text,
-                           ha='center', va='center', fontsize=6, fontweight='bold')
+                    ax.text(
+                        x_morning + 0.5,
+                        y + 0.35,
+                        text,
+                        ha='center',
+                        va='center',
+                        fontsize=9,
+                        fontweight='bold',
+                    )
                 else:
-                    rect = Rectangle((x_morning, y), 1.0, 0.9,
-                                   facecolor='white', edgecolor='lightgray', linewidth=1, alpha=0.4, linestyle='--')
+                    rect = Rectangle((x_morning, y), 1.0, 0.9, facecolor='white', edgecolor='lightgray', linewidth=1, alpha=0.4, linestyle='--')
                     ax.add_patch(rect)
-                    ax.text(x_morning + 0.08, y + 0.75, 'AM',
-                           ha='left', va='top', fontsize=6, color='gray', alpha=0.5)
-                
-                # Afternoon slot (right half) - width 1.0 to fill day properly
-                afternoon_block = next((b for b in week_blocks 
-                                      if b['day'] == day_idx + 1 
-                                      and b['timeslot'] == 'afternoon' 
-                                      and b['room'] == room), None)
-                
+                    ax.text(x_morning + 0.08, y + 0.75, 'AM', ha='left', va='top', fontsize=6, color='gray', alpha=0.5)
+
+                # Afternoon slot
+                afternoon_block = next(
+                    (
+                        b
+                        for b in week_blocks
+                        if b['day'] == day_idx + 1 and b['timeslot'] == 'afternoon' and b['room'] == room
+                    ),
+                    None,
+                )
                 x_afternoon = day_idx * 2 + 1.0
                 if afternoon_block:
                     color = '#e74c3c' if afternoon_block['room_type'] == 'practical' else '#3498db'
-                    rect = Rectangle((x_afternoon, y), 1.0, 0.9,
-                                   facecolor=color, edgecolor='black', linewidth=2, alpha=0.8)
+                    rect = Rectangle((x_afternoon, y), 1.0, 0.9, facecolor=color, edgecolor='black', linewidth=2, alpha=0.8)
                     ax.add_patch(rect)
-                    
-                    # Add "PM" label in small text
-                    ax.text(x_afternoon + 0.08, y + 0.75, 'PM',
-                           ha='left', va='top', fontsize=6, fontweight='bold', color='white',
-                           bbox=dict(boxstyle='round,pad=0.2', facecolor='black', alpha=0.5))
-                    
+                    # PM label (unchanged size)
+                    ax.text(
+                        x_afternoon + 0.08,
+                        y + 0.75,
+                        'PM',
+                        ha='left',
+                        va='top',
+                        fontsize=6,
+                        fontweight='bold',
+                        color='white',
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='black', alpha=0.5),
+                    )
+                    # Bigger subject / lecturer / group text
                     text = f"{afternoon_block['subject_name']}\n{afternoon_block['lecturer']}\n{afternoon_block['group']}"
-                    ax.text(x_afternoon + 0.5, y + 0.35, text,
-                           ha='center', va='center', fontsize=6, fontweight='bold')
+                    ax.text(
+                        x_afternoon + 0.5,
+                        y + 0.35,
+                        text,
+                        ha='center',
+                        va='center',
+                        fontsize=9,
+                        fontweight='bold',
+                    )
                 else:
-                    rect = Rectangle((x_afternoon, y), 1.0, 0.9,
-                                   facecolor='white', edgecolor='lightgray', linewidth=1, alpha=0.4, linestyle='--')
+                    rect = Rectangle((x_afternoon, y), 1.0, 0.9, facecolor='white', edgecolor='lightgray', linewidth=1, alpha=0.4, linestyle='--')
                     ax.add_patch(rect)
-                    ax.text(x_afternoon + 0.08, y + 0.75, 'PM',
-                           ha='left', va='top', fontsize=6, color='gray', alpha=0.5)
-        
-        # Set axis properties
+                    ax.text(x_afternoon + 0.08, y + 0.75, 'PM', ha='left', va='top', fontsize=6, color='gray', alpha=0.5)
+
+        # Axes and legend
         ax.set_xlim(-0.8, 10.2)
         ax.set_ylim(-0.5, len(rooms) + 0.5)
-
-        # Add vertical lines to divide days (at boundaries between days) - must match rectangle spacing of 2.0
         for boundary in [0, 2, 4, 6, 8, 10]:
             ax.axvline(boundary, color='black', linewidth=2, alpha=0.5, zorder=0)
-
-        # X-axis: show day names on top
         day_centers = [i * 2.05 + 0.5 for i in range(len(days))]
         ax.set_xticks(day_centers)
         ax.set_xticklabels(days, fontsize=11, fontweight='bold')
         ax.xaxis.tick_top()
         ax.tick_params(axis='x', labelbottom=False)
-
         ax.set_yticks([])
-        # Remove left axis label and spine for a cleaner look
         ax.set_ylabel('')
         ax.spines['left'].set_visible(False)
-        
-        # Add legend
         theory_patch = mpatches.Patch(color='#3498db', label='Theory', alpha=0.8)
         practical_patch = mpatches.Patch(color='#e74c3c', label='Practical', alpha=0.8)
         empty_patch = mpatches.Patch(color='white', edgecolor='lightgray', label='Empty Slot', alpha=0.4, linestyle='--')
-        ax.legend(handles=[theory_patch, practical_patch, empty_patch], 
-                 loc='upper right', fontsize=10, framealpha=0.9)
-        
+        ax.legend(handles=[theory_patch, practical_patch, empty_patch], loc='upper right', fontsize=10, framealpha=0.9)
         ax.grid(False)
         ax.set_aspect('equal')
-        
         plt.tight_layout()
-        
-        # Save figure
-        output_dir = os.path.join('images', 'schedule')
+
+        output_dir = os.path.join('images', 'schedule', 'overview')
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, f'calendar_week_{week}_overview.png')
         fig.savefig(path, dpi=110, pil_kwargs={'optimize': True})
@@ -456,7 +470,7 @@ def create_utilization_heatmap(schedule_blocks, weeks=15):
     # Omit per-cell value annotations to reduce render time and file size
     
     plt.tight_layout()
-    output_dir = os.path.join('images', 'schedule')
+    output_dir = os.path.join('images', 'schedule', 'analysis')
     os.makedirs(output_dir, exist_ok=True)
     path = os.path.join(output_dir, 'calendar_utilization_heatmap.png')
     fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
@@ -473,11 +487,14 @@ def create_lecturer_calendar(schedule_blocks, weeks=15):
         if not lec_blocks:
             continue
 
-        fig, axes = plt.subplots(5, 3, figsize=(16, 10))
+        # Create figure - dynamic grid based on number of weeks
+        rows = (weeks + 2) // 3  # Round up to fit all weeks
+        cols = min(3, weeks)  # Max 3 columns
+        fig, axes = plt.subplots(rows, cols, figsize=(16, 10))
         fig.suptitle(f'Lecturer Calendar: {lecturer}', fontsize=14, fontweight='bold')
-        axes = axes.flatten()
+        axes = axes.flatten() if weeks > 1 else [axes]
 
-        for week in range(1, min(weeks + 1, 16)):
+        for week in range(1, weeks + 1):
             ax = axes[week - 1]
             week_blocks = [b for b in lec_blocks if b['week'] == week]
 
@@ -526,7 +543,7 @@ def create_lecturer_calendar(schedule_blocks, weeks=15):
         plt.tight_layout()
 
         lec_filename = lecturer.replace(' ', '_').replace('-', '_')
-        output_dir = os.path.join('images', 'schedule')
+        output_dir = os.path.join('images', 'schedule', 'lecturers')
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, f'calendar_lecturer_{lec_filename}.png')
         fig.savefig(path, dpi=110, bbox_inches='tight', pil_kwargs={'optimize': True})
@@ -539,25 +556,37 @@ def main():
     print("SCHEDULE CALENDAR VISUALIZATION")
     print("="*60)
     
+    # Read configuration to get the correct number of weeks
+    try:
+        with open('input_data.json', 'r') as f:
+            config_data = json.load(f)
+        weeks = config_data.get('configuration', {}).get('weeks', 15)
+        print(f"✓ Configuration loaded: {weeks} weeks")
+    except Exception as e:
+        print(f"⚠ Could not read configuration, using default 15 weeks: {e}")
+        weeks = 15
+    
     print("\nParsing schedule output...")
     schedule_blocks = parse_schedule_output()
     print(f"✓ Parsed {len(schedule_blocks)} scheduled blocks")
     
     print("\nGenerating visualizations...")
     print("\n1. Room Calendars:")
-    create_room_calendar(schedule_blocks, weeks=15)
+    create_room_calendar(schedule_blocks, weeks=weeks)
     
     print("\n2. Student Group Calendars:")
-    create_group_calendar(schedule_blocks, weeks=15)
+    create_group_calendar(schedule_blocks, weeks=weeks)
 
     print("\n3. Lecturer Calendars:")
-    create_lecturer_calendar(schedule_blocks, weeks=15)
+    create_lecturer_calendar(schedule_blocks, weeks=weeks)
     
     print("\n4. Weekly Overviews:")
-    create_weekly_overview(schedule_blocks, weeks_to_show=5)
+    # Show min of 5 weeks or total weeks
+    weeks_to_show = min(5, weeks)
+    create_weekly_overview(schedule_blocks, weeks_to_show=weeks_to_show)
     
     print("\n5. Utilization Analysis:")
-    create_utilization_heatmap(schedule_blocks, weeks=15)
+    create_utilization_heatmap(schedule_blocks, weeks=weeks)
     
     print("\n" + "="*60)
     print("All calendar visualizations generated successfully!")

@@ -2,7 +2,7 @@
   "subjects": [
     {
       "id": "S1",
-      "name": "fgergre",
+      "name": "Ostheopathy",
       "blocks_required": 20,
       "room_type": "theory",
       "spread": true
@@ -51,7 +51,7 @@
     },
     {
       "id": "S9",
-      "name": "Ethics",
+      "name": "Ethicss",
       "blocks_required": 6,
       "room_type": "theory",
       "spread": false
@@ -72,38 +72,31 @@
     },
     {
       "id": "A",
-      "name": "Practical A - Palpation",
+      "name": "Palpation",
       "blocks_required": 14,
       "room_type": "practical",
       "spread": false
     },
     {
       "id": "B",
-      "name": "Practical B - Manipulation",
+      "name": "Manipulation",
       "blocks_required": 12,
       "room_type": "practical",
       "spread": false
     },
     {
       "id": "C",
-      "name": "Practical C - Assessment",
+      "name": "Assessment",
       "blocks_required": 10,
       "room_type": "practical",
       "spread": false
     },
     {
       "id": "D",
-      "name": "Practical D - Treatment",
+      "name": "Treatment",
       "blocks_required": 10,
       "room_type": "practical",
       "spread": true
-    },
-    {
-      "id": "S6",
-      "name": "fsf",
-      "blocks_required": 3,
-      "room_type": "theory",
-      "spread": false
     }
   ],
   "lecturers": [
@@ -324,7 +317,7 @@
     {
       "id": "L6",
       "name": "Dr. Miller",
-      "subject_id": "S6",
+      "subject_id": "S5",
       "priority": 6,
       "availability": []
     },
@@ -561,13 +554,6 @@
         "exceptions": [],
         "blackouts": []
       }
-    },
-    {
-      "id": "danka",
-      "name": "gfdg",
-      "subject_id": "S2",
-      "priority": 2,
-      "availability": []
     }
   ],
   "student_groups": [
@@ -577,14 +563,13 @@
       "subject_ids": [
         "S1",
         "S2",
-        "S6",
         "S9",
         "A"
       ]
     },
     {
       "id": "G2",
-      "name": "Group 2 - Year 22",
+      "name": "Group 2",
       "subject_ids": [
         "S3",
         "S4",
@@ -595,7 +580,7 @@
     },
     {
       "id": "G3",
-      "name": "Group 3 - Year 33",
+      "name": "Group 3",
       "subject_ids": [
         "S5",
         "S8",
@@ -605,7 +590,7 @@
     },
     {
       "id": "G4",
-      "name": "Group 4 - Advanced",
+      "name": "Group 4",
       "subject_ids": [
         "S1",
         "S3",
@@ -619,15 +604,19 @@
       "subject_ids": [
         "S2",
         "S4",
-        "S6",
         "S8",
         "A",
         "C"
       ]
+    },
+    {
+      "id": "G6",
+      "name": "",
+      "subject_ids": []
     }
   ],
   "configuration": {
-    "weeks": 15,
+    "weeks": 17,
     "scheduled_days": [
       "Monday",
       "Tuesday",
@@ -640,6 +629,6 @@
       "afternoon"
     ],
     "year": 2026,
-    "canton": "valais"
+    "canton": "zurich"
   }
 }

@@ -227,9 +227,9 @@ def load_from_json(filename: str = 'input_data.json') -> Tuple[List[Lecturer], L
             availability=availability
         ))
     
-    # Create 10 default theory rooms with 50 capacity (always sufficient for any group)
+    # Create 30 default theory rooms with 50 capacity (always sufficient for any group)
     rooms = []
-    for i in range(1, 11):
+    for i in range(1, 31):
         rooms.append(Room(
             id=f'T{i}',
             name=f'Theory Room {i}',
